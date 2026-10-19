@@ -1,0 +1,23 @@
+#!/bin/bash
+# 双击 Color Number.app 时运行的脚本：
+# 找到 color-number 环境里的 Python，然后运行项目文件夹里的 main.py。
+
+# 这个 App 放在项目文件夹里，所以往上三层就是项目文件夹
+PROJECT="$(cd "$(dirname "$0")/../../.." && pwd)"
+
+# 依次尝试常见的 conda 安装位置
+for BASE in "$HOME/miniforge3" "$HOME/mambaforge" "$HOME/miniconda3" "$HOME/anaconda3" \
+            "/opt/homebrew/Caskroom/miniforge/base" "/opt/miniconda3"; do
+    if [ -x "$BASE/envs/color-number/bin/python" ]; then
+        PYTHON="$BASE/envs/color-number/bin/python"
+        break
+    fi
+done
+
+if [ -z "$PYTHON" ]; then
+    osascript -e 'display alert "找不到 color-number 环境" message "请先在终端里运行：conda env create --file environment.yml"'
+    exit 1
+fi
+
+cd "$PROJECT" || exit 1
+exec "$PYTHON" main.py

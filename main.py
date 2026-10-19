@@ -7,7 +7,12 @@ Color Number 数字填色 —— 程序入口。
     python main.py
 """
 
-from kivy.config import Config
+import os
+
+# 播放声音用 SDL2：Kivy 默认的 GStreamer 在 conda 环境里缺少 WAV 解码插件，会没有声音
+os.environ.setdefault("KIVY_AUDIO", "sdl2")
+
+from kivy.config import Config  # noqa: E402
 
 # 这些设置必须在创建窗口之前写好
 Config.set("graphics", "width", "1200")

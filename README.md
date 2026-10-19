@@ -25,6 +25,14 @@ conda activate color-number
 python main.py
 ```
 
+### 双击启动（macOS）
+
+建好环境之后，在 Finder 里双击项目文件夹中的 **Color Number.app** 就能打开游戏。
+
+- 这个 App 只是一个启动器，它会去运行同一个文件夹里的 `main.py`，所以**不要把它移出项目文件夹**。
+- 想放进程序坞，可以把它拖到程序坞里（这样只会放一个快捷方式，App 本身还留在原处）。
+- 启动器会在 `~/miniforge3`、`~/miniconda3`、`~/anaconda3` 等常见位置寻找 `color-number` 环境。
+
 以后更新了 `environment.yml`，用这条命令同步：
 
 ```bash
