@@ -5,6 +5,7 @@
 from PIL import Image as PILImage
 
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.graphics import Color, RoundedRectangle
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -14,6 +15,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
+from kivy.uix.textinput import TextInput
 
 from colornumber.core import library
 from colornumber.core.render import render_state
@@ -243,6 +245,7 @@ class HomeScreen(Screen):
                 buttons.append((tr(f"export_{kind}"),
                                 lambda k=kind: self._export(meta, k), "normal", False))
         buttons += [
+            (tr("rename"), lambda: self._rename(meta), "normal"),
             (tr("restart"), lambda: confirm(tr("confirm_restart", name=name),
                                             lambda: self._restart(meta), tr("restart")), "normal"),
             (tr("delete"), lambda: confirm(tr("confirm_delete", name=name),
@@ -256,6 +259,22 @@ class HomeScreen(Screen):
         app = App.get_running_app()
         _, game = app.store.load(meta["id"], app.settings.wrong_mode)
         export_game(game, meta["name"], kind)
+
+    def _rename(self, meta):
+        field = TextInput(text=meta["name"], multiline=False, font_size="16sp",
+                          size_hint_y=None, height=dp(42), padding=(dp(10), dp(10)))
+
+        def save():
+            name = field.text.strip()
+            if name:
+                App.get_running_app().store.rename(meta["id"], name)
+                self.refresh()
+
+        field.bind(on_text_validate=lambda _f: (dialog.dismiss(), save()))
+        dialog = Dialog("", [(tr("cancel"), None, "normal"), (tr("ok"), save, "primary")],
+                        title=tr("rename"), content=field)
+        dialog.open()
+        Clock.schedule_once(lambda _dt: setattr(field, "focus", True), 0.2)
 
     def _restart(self, meta):
         app = App.get_running_app()

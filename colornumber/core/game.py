@@ -25,6 +25,7 @@ class Game:
         self.answer = picture.flat_numbers()
         self.painted = list(painted) if painted else [0] * len(self.answer)
         self.history = [list(stroke) for stroke in history] if history else []
+        self.redo_stack = []          # 撤销掉的笔画，可以"重做"回来（不存档）
         self.wrong_mode = wrong_mode
         self._stroke = None
 
@@ -106,6 +107,7 @@ class Game:
         """结束这一笔（比如鼠标松开时）。有改动才记进撤销记录。"""
         if self._stroke:
             self.history.append(self._stroke)
+            self.redo_stack.clear()       # 画了新的一笔，之前撤销的就不能重做了
         self._stroke = None
 
     def _set(self, idx, value):
@@ -171,6 +173,7 @@ class Game:
         if not self.history:
             return []
         stroke = self.history.pop()
+        self.redo_stack.append(stroke)
         changed = []
         saved, self._stroke = self._stroke, None   # 撤销本身不记进撤销记录
         # 倒着恢复，这样同一格在一笔里被改了多次也能正确还原
@@ -179,6 +182,21 @@ class Game:
             self._set(idx, old)
             changed.append(idx)
         self._stroke = saved
+        return changed
+
+    def redo(self):
+        """重做最后一次撤销的笔画。返回改变了的格子列表。"""
+        if not self.redo_stack:
+            return []
+        stroke = self.redo_stack.pop()
+        saved, self._stroke = self._stroke, None
+        changed = []
+        for i in range(0, len(stroke), 3):
+            idx, new = stroke[i], stroke[i + 2]
+            self._set(idx, new)
+            changed.append(idx)
+        self._stroke = saved
+        self.history.append(stroke)
         return changed
 
     def restart(self):

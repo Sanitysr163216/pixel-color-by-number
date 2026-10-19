@@ -9,6 +9,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.slider import Slider
 
 from colornumber.core.game import ALLOW_WRONG, BLOCK_WRONG
 from colornumber.core.settings import COLOR_LIMIT_CHOICES, GRID_LIMIT_CHOICES
@@ -64,14 +65,53 @@ class SettingsScreen(Screen):
         rows.add_widget(self._choice_row(
             "sound", [(True, tr("on")), (False, tr("off"))], settings.sound,
             lambda value, _revert: app.update_setting("sound", value)))
+        rows.add_widget(self._slider_row("sound_volume", settings.sound_volume))
         rows.add_widget(self._choice_row(
             "music", [(True, tr("on")), (False, tr("off"))], settings.music,
             lambda value, _revert: app.update_setting("music", value)))
+        rows.add_widget(self._slider_row("music_volume", settings.music_volume))
+        rows.add_widget(self._now_playing_row())
 
         scroll = ScrollView()
         scroll.add_widget(rows)
         root.add_widget(scroll)
         self.add_widget(root)
+
+    def _title(self, key):
+        return Label(text=tr(key), color=TEXT, font_size="16sp", size_hint_x=None,
+                     width=dp(220), halign="left", valign="middle", text_size=(dp(220), None))
+
+    def _slider_row(self, key, value):
+        """音量滑块：拖动时马上生效。"""
+        app = App.get_running_app()
+        row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        row.add_widget(self._title(key))
+        slider = Slider(min=0, max=1, value=value, size_hint_x=None, width=dp(320),
+                        cursor_size=(dp(20), dp(20)))
+        slider.bind(value=lambda _s, v: app.update_setting(key, round(v, 2)))
+        row.add_widget(slider)
+        row.add_widget(Label())
+        return row
+
+    def _now_playing_row(self):
+        """显示正在播放的曲子，可以换下一首。"""
+        app = App.get_running_app()
+        row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        row.add_widget(Label(size_hint_x=None, width=dp(220)))
+        label = Label(color=TEXT, font_size="15sp", halign="left", valign="middle")
+        label.bind(size=lambda widget, value: setattr(widget, "text_size", value))
+
+        def show(name=None):
+            name = name or app.sounds.current_track
+            label.text = tr("now_playing", track=tr(f"music_{name}")) if name else tr("nothing_playing")
+
+        app.sounds.on_track_change = show
+        show()
+        button = RoundButton(text=tr("next_track"), size_hint_x=None, width=dp(110))
+        button.bind(on_release=lambda _b: app.sounds.next_track())
+        row.add_widget(button)
+        row.add_widget(label)
+        return row
 
     def _choice_row(self, title_key, options, current, on_choose):
         """
@@ -79,8 +119,7 @@ class SettingsScreen(Screen):
         on_choose(value, revert) 在玩家选了新选项时调用；调用 revert() 可以退回原来的选项。
         """
         row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
-        row.add_widget(Label(text=tr(title_key), color=TEXT, font_size="16sp", size_hint_x=None,
-                             width=dp(220), halign="left", valign="middle", text_size=(dp(220), None)))
+        row.add_widget(self._title(title_key))
         group = f"settings_{title_key}"
         chips = {}
         state = {"current": current, "syncing": False}

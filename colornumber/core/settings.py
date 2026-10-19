@@ -19,6 +19,9 @@ class Settings:
     color_limit: int = 36             # 导入照片时颜色最多多少种
     sound: bool = True                # 音效
     music: bool = True                # 背景音乐
+    sound_volume: float = 0.8         # 音效音量 0–1
+    music_volume: float = 0.5         # 背景音乐音量 0–1
+    ai_assist: bool = True            # 导入照片时用 AI 识别人脸和主体（只在 macOS 上有）
 
     def save(self, path):
         with open(path, "w", encoding="utf-8") as file:

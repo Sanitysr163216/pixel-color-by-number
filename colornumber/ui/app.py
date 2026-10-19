@@ -12,7 +12,7 @@ from kivy.properties import NumericProperty, StringProperty
 from kivy.uix.screenmanager import FadeTransition, ScreenManager
 
 from colornumber.core import library
-from colornumber.core.audio import ensure_sounds
+from colornumber.core import audio
 from colornumber.core.i18n import tr as translate
 from colornumber.core.settings import Settings
 from colornumber.core.storage import ProjectStore
@@ -44,7 +44,7 @@ class ColorNumberApp(App):
         self.settings_color_limit = self.settings.color_limit
         self.store = ProjectStore(data / "projects")
         self.sounds = SoundManager(self.settings)
-        self._prepare_sounds(data / "sounds")
+        self._prepare_sounds(data)
 
         # 这些页面要用到 app.tr 等属性，所以在这里才 import
         from colornumber.ui.game_screen import GameScreen
@@ -61,10 +61,17 @@ class ColorNumberApp(App):
         return self.screens
 
     def _prepare_sounds(self, folder):
-        """第一次运行时合成声音要几秒钟，放到后台做，做完再加载。"""
+        """
+        第一次运行时合成声音要十几秒，放到后台做：先做音效，再一首一首做音乐，
+        每做好一样就交给 SoundManager，不用等全部做完。
+        """
         def work():
-            paths = ensure_sounds(folder)
-            Clock.schedule_once(lambda _dt: self.sounds.load(paths))
+            audio.remove_old_sounds(folder)
+            effects = audio.ensure_effects(folder)
+            Clock.schedule_once(lambda _dt: self.sounds.load_effects(effects))
+            for track in audio.MUSIC_TRACKS:
+                path = audio.ensure_music(folder, track)
+                Clock.schedule_once(lambda _dt, n=track.name, p=path: self.sounds.add_track(n, p))
         threading.Thread(target=work, daemon=True).start()
 
     # ------------------------------------------------------------------
@@ -118,6 +125,8 @@ class ColorNumberApp(App):
         self.settings_color_limit = self.settings.color_limit
         if name == "music":
             self.sounds.update_music()
+        if name in ("music_volume", "sound_volume"):
+            self.sounds.update_volumes()
 
     def set_language(self, language):
         self.update_setting("language", language)
@@ -126,6 +135,18 @@ class ColorNumberApp(App):
     # ------------------------------------------------------------------
     # 程序关闭或切到后台时保存
     # ------------------------------------------------------------------
+
+    def on_start(self):
+        # Mac 触控板：捏合缩放、双指滑动移动画布（只在填色页面、鼠标在画布上时）
+        from colornumber.ui import mac_gestures
+
+        def gesture_target():
+            if self.screens.current != "game":
+                return None
+            canvas = self.screens.get_screen("game").canvas_widget
+            return canvas if canvas.wants_gesture() else None
+
+        mac_gestures.install(gesture_target)
 
     def on_stop(self):
         self.screens.get_screen("game").save()

@@ -171,9 +171,10 @@ class Dialog(ModalView):
     buttons 是 [(文字, 回调, 样式), ...]，样式是 "normal"、"primary" 或 "danger"。
     点按钮后弹窗会关闭；加第四项 False 表示点了不关闭。
     按钮不超过 2 个时排成一行，更多时竖着排。
+    content 是放在文字和按钮之间的任意控件（比如输入框）。
     """
 
-    def __init__(self, text, buttons, title=None, **kwargs):
+    def __init__(self, text, buttons, title=None, content=None, **kwargs):
         super().__init__(size_hint=(None, None), width=dp(420), auto_dismiss=False,
                          background_color=(0, 0, 0, 0.35), background="", **kwargs)
         box = BoxLayout(orientation="vertical", padding=dp(22), spacing=dp(12),
@@ -194,6 +195,8 @@ class Dialog(ModalView):
                 width=lambda widget, width: setattr(widget, "text_size", (width, None)),
                 texture_size=lambda widget, size: setattr(widget, "height", size[1]))
             box.add_widget(message_label)
+        if content is not None:
+            box.add_widget(content)
 
         if buttons:
             if len(buttons) <= 2:

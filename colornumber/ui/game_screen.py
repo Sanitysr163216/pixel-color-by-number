@@ -66,6 +66,11 @@ Builder.load_string("""
                 width: "90dp"
                 on_release: root.undo()
             RoundButton:
+                text: app.tr("redo", app.lang)
+                size_hint_x: None
+                width: "90dp"
+                on_release: root.redo()
+            RoundButton:
                 text: app.tr("hint", app.lang)
                 primary: True
                 size_hint_x: None
@@ -97,9 +102,38 @@ Builder.load_string("""
                     text: app.tr("tool_move", app.lang)
                     group: "tool"
                     on_state: if self.state == "down": canvas_widget.tool = "move"
+                Label:
+                    text: app.tr("brush_size", app.lang)
+                    color: 0.45, 0.45, 0.5, 1
+                    font_size: "12sp"
+                    size_hint_y: None
+                    height: "16dp"
+                BoxLayout:
+                    size_hint_y: None
+                    height: "30dp"
+                    spacing: "3dp"
+                    Chip:
+                        id: brush_1
+                        text: "1"
+                        group: "brush"
+                        state: "down"
+                        height: "30dp"
+                        on_state: if self.state == "down": canvas_widget.brush = 1
+                    Chip:
+                        id: brush_3
+                        text: "3"
+                        group: "brush"
+                        height: "30dp"
+                        on_state: if self.state == "down": canvas_widget.brush = 3
+                    Chip:
+                        id: brush_5
+                        text: "5"
+                        group: "brush"
+                        height: "30dp"
+                        on_state: if self.state == "down": canvas_widget.brush = 5
                 Widget:
                     size_hint_y: None
-                    height: "6dp"
+                    height: "4dp"
                 RoundButton:
                     text: app.tr("tool_bucket", app.lang)
                     on_release: root.bucket()
@@ -122,6 +156,7 @@ Builder.load_string("""
                     size: self.parent.size
                     on_cells_changed: root.on_cells_changed(*args[1:])
                     on_stroke_end: root.on_stroke_end()
+                    on_pick: root.pick(args[1])
                 Confetti:
                     id: confetti
                     pos: self.parent.pos
@@ -223,6 +258,7 @@ class GameScreen(Screen):
         self.title = meta["name"]
         self._was_complete = game.is_complete()
         self.set_tool("brush")
+        self.set_brush(1)
         self._build_palette()
         first = game.next_unfinished_number(game.picture.color_count) or 1
         self.canvas_widget.selected = first
@@ -280,7 +316,11 @@ class GameScreen(Screen):
     # ------------------------------------------------------------------
 
     def on_cells_changed(self, changed):
-        App.get_running_app().sounds.play("pop")
+        sounds = self.app.sounds
+        if any(self.game.is_correct(idx) for idx in changed):
+            sounds.pop()
+        elif any(self.game.is_wrong(idx) for idx in changed):
+            sounds.play("wrong")
         numbers = {self.game.answer[idx] for idx in changed}
         for number in numbers:
             self._swatches[number].remaining = self.game.remaining_count(number)
@@ -288,7 +328,8 @@ class GameScreen(Screen):
 
     def on_stroke_end(self):
         self._save_trigger()
-        app = App.get_running_app()
+        app = self.app
+        app.sounds.start_stroke()
         if self.game.is_complete():
             if not self._was_complete:
                 self._was_complete = True
@@ -316,6 +357,23 @@ class GameScreen(Screen):
             for number, swatch in self._swatches.items():
                 swatch.remaining = self.game.remaining_count(number)
 
+    def redo(self):
+        if self.canvas_widget.locked:
+            return
+        changed = self.game.redo()
+        if changed:
+            self.canvas_widget.apply_action(changed)
+            for number, swatch in self._swatches.items():
+                swatch.remaining = self.game.remaining_count(number)
+
+    def pick(self, number):
+        """吸管：选中点到的格子的颜色。"""
+        self._select(number)
+
+    def set_brush(self, size):
+        for value in (1, 3, 5):
+            self.ids[f"brush_{value}"].state = "down" if value == size else "normal"
+
     def bucket(self):
         if self.canvas_widget.locked:
             return
@@ -325,7 +383,7 @@ class GameScreen(Screen):
         if self.canvas_widget.locked or self.game.is_complete():
             return
         canvas = self.canvas_widget
-        row0, row1, col0, col1 = canvas._visible_range()
+        row0, row1, col0, col1 = canvas.visible_range()
         idx = self.game.find_hint(canvas.selected, (row0 + row1) / 2, (col0 + col1) / 2)
         if idx is None:
             return
@@ -376,8 +434,16 @@ class GameScreen(Screen):
     def _on_key_down(self, _window, key, _scancode, codepoint, modifiers):
         canvas = self.canvas_widget
         command = "meta" in modifiers or "ctrl" in modifiers
-        if command and codepoint == "z":
+        if command and codepoint == "z" and "shift" in modifiers:
+            self.redo()
+        elif command and codepoint == "y":
+            self.redo()
+        elif command and codepoint == "z":
             self.undo()
+        elif codepoint in ("[", "]"):
+            sizes = [1, 3, 5]
+            index = sizes.index(canvas.brush) + (1 if codepoint == "]" else -1)
+            self.set_brush(sizes[max(0, min(2, index))])
         elif key == 32:                       # 空格
             canvas.space_pan = True
         elif codepoint == "b":

@@ -4,6 +4,9 @@
     pytest
 """
 
+from pathlib import Path
+
+import numpy as np
 from PIL import Image
 
 from colornumber.core import audio, converter, export, library
@@ -180,6 +183,110 @@ def test_exports(tmp_path):
         assert (tmp_path / name).stat().st_size > 1000
 
 
-def test_sounds(tmp_path):
-    paths = audio.ensure_sounds(tmp_path)
-    assert set(paths) == {"pop", "color_done", "complete", "music"}
+def test_sound_effects(tmp_path):
+    paths = audio.ensure_effects(tmp_path)
+    assert len(paths["pop"]) == len(audio.POP_NOTES)
+    for name in ("wrong", "color_done", "complete"):
+        assert Path(paths[name]).stat().st_size > 1000
+
+
+def test_music_track(tmp_path):
+    track = audio.MUSIC_TRACKS[0]
+    path = audio.ensure_music(tmp_path, track)
+    import wave
+    with wave.open(path) as file:
+        seconds = file.getnframes() / file.getframerate()
+    assert 40 < seconds < 150
+
+
+def test_redo():
+    game = Game(small_picture())
+    game.bucket(1)
+    painted = game.painted[:]
+    game.undo()
+    assert game.redo() and game.painted == painted
+    assert game.redo() == []
+    game.undo()
+    game.paint(2, 2)          # 不在一笔里（没有 begin_stroke），不记录
+    game.bucket(3)            # 新的一笔会清空重做
+    assert game.redo() == []
+
+
+def test_lab_round_trip():
+    colors = np.array([[255, 0, 0], [12, 200, 90], [255, 255, 255], [0, 0, 0]])
+    assert np.abs(converter.lab_to_rgb(converter.rgb_to_lab(colors)).astype(int) - colors).max() <= 1
+
+
+def test_similar_color_pairs():
+    assert converter.similar_color_pairs([(255, 0, 0), (250, 5, 5), (0, 0, 255)]) == 1
+    assert converter.similar_color_pairs([(255, 0, 0), (0, 0, 255)]) == 0
+
+
+def test_clean_keeps_contrasting_detail():
+    # 一大片皮肤色里有一个黑点（像瞳孔）和一个几乎同色的点（像噪点）
+    image = Image.new("RGB", (160, 160), (235, 190, 160))
+    for x in range(70, 80):
+        for y in range(70, 80):
+            image.putpixel((x, y), (20, 15, 15))
+    for x in range(20, 30):
+        for y in range(20, 30):
+            image.putpixel((x, y), (222, 178, 150))
+    picture = converter.convert(image, grid_size=16, color_count=4)
+    numbers = picture.numbers
+    assert numbers[7][7] != numbers[0][0]          # 黑点保留
+    assert numbers[2][2] == numbers[0][0]          # 低对比的点被清理
+
+
+def test_recommend_color_count_for_simple_art():
+    picture = library.load("mushroom")
+    image = Image.new("RGB", (picture.width, picture.height))
+    image.putdata([picture.color_of(n) for n in picture.flat_numbers()])
+    image = image.resize((picture.width * 20, picture.height * 20), Image.Resampling.NEAREST)
+    count = converter.recommend_color_count(image, grid_size=32, max_colors=36)
+    assert 6 <= count <= 10                        # 这张图本来就是 8 种颜色
+
+
+def test_detail_and_importance_options():
+    image = Image.new("RGB", (120, 80))
+    image.putdata([(x * 2, y * 3, 100) for y in range(80) for x in range(120)])
+    importance = np.zeros((80, 120))
+    importance[20:60, 30:90] = 1
+    subject = np.zeros((80, 120))
+    subject[10:70, 20:100] = 1
+    for detail in (0.0, 1.0):
+        picture = converter.convert(image, grid_size=30, color_count=8, detail=detail,
+                                    importance=importance, subject=subject, simplify_background=True,
+                                    crop=(10, 0, 110, 80))
+        assert (picture.width, picture.height) == (30, 24)
+
+
+def test_trackpad_event_handling():
+    from colornumber.ui import mac_gestures
+    if not mac_gestures.available():
+        return
+    import AppKit
+
+    class FakeEvent:
+        def __init__(self, kind, **values):
+            self.kind, self.values = kind, values
+        def type(self): return self.kind
+        def magnification(self): return self.values.get("magnification", 0)
+        def hasPreciseScrollingDeltas(self): return self.values.get("precise", False)
+        def scrollingDeltaX(self): return self.values.get("dx", 0)
+        def scrollingDeltaY(self): return self.values.get("dy", 0)
+        def window(self): return None
+
+    class FakeCanvas:
+        def __init__(self): self.calls = []
+        def gesture_zoom(self, factor): self.calls.append(("zoom", factor))
+        def gesture_pan(self, dx, dy): self.calls.append(("pan", dx, dy))
+
+    canvas = FakeCanvas()
+    pinch = FakeEvent(AppKit.NSEventTypeMagnify, magnification=0.1)
+    assert mac_gestures.handle_event(pinch, lambda: canvas) is None
+    swipe = FakeEvent(AppKit.NSEventTypeScrollWheel, precise=True, dx=3, dy=4)
+    assert mac_gestures.handle_event(swipe, lambda: canvas) is None
+    wheel = FakeEvent(AppKit.NSEventTypeScrollWheel, precise=False, dy=1)
+    assert mac_gestures.handle_event(wheel, lambda: canvas) is wheel      # 鼠标滚轮交给 Kivy
+    assert mac_gestures.handle_event(pinch, lambda: None) is pinch        # 不在画布上
+    assert canvas.calls == [("zoom", 1.1), ("pan", 6.0, -8.0)]
