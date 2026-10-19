@@ -1,0 +1,11 @@
+name: color-number
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - kivy=2.3.1
+  - pillow
+  - pillow-heif      # 读取 iPhone 的 HEIC 照片
+  - imageio          # 导出 MP4
+  - imageio-ffmpeg   # 导出 MP4 需要的视频编码器
+  - pytest           # 运行 tests 文件夹里的测试
