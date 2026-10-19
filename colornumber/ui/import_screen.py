@@ -168,6 +168,8 @@ Builder.load_string("""
                     on_release: root.use_recommendation()
             SliderRow:
                 id: detail
+                disabled: classic.state == "down"
+                opacity: 0.4 if classic.state == "down" else 1
                 title: app.tr("detail", app.lang)
                 minimum: 0
                 maximum: 100
@@ -178,6 +180,10 @@ Builder.load_string("""
                 size_hint_y: None
                 height: "36dp"
                 spacing: "8dp"
+                Chip:
+                    id: classic
+                    text: app.tr("classic_mode", app.lang)
+                    on_state: root.on_classic_toggle()
                 Chip:
                     id: clean
                     text: app.tr("clean_stray", app.lang)
@@ -370,6 +376,7 @@ class ImportScreen(Screen):
     def on_pre_enter(self, *_):
         settings = App.get_running_app().settings
         self.ids.ai.state = "down" if (settings.ai_assist and self.ai_available) else "normal"
+        self.ids.classic.state = "down" if settings.classic_style else "normal"
 
     # ------------------------------------------------------------------
     # 读取照片
@@ -422,7 +429,18 @@ class ImportScreen(Screen):
             return
         self.analysis = result
         self.subject_found = result is not None and result.subject is not None
-        if result is None:
+        self._update_ai_status()
+        if self.ids.ai.state == "down":
+            self._recommend_key = None
+            self.schedule_preview()
+
+    def _update_ai_status(self):
+        result = self.analysis
+        if result is None and not self.ai_status:
+            return
+        if self.ids.classic.state == "down" and result is not None and result.faces:
+            self.ai_status = tr("ai_classic_note", faces=result.faces)
+        elif result is None:
             self.ai_status = tr("ai_failed")
         elif result.faces and self.subject_found:
             self.ai_status = tr("ai_found_faces_subject", faces=result.faces)
@@ -432,9 +450,12 @@ class ImportScreen(Screen):
             self.ai_status = tr("ai_found_subject")
         else:
             self.ai_status = tr("ai_found_nothing")
-        if self.ids.ai.state == "down":
-            self._recommend_key = None
-            self.schedule_preview()
+
+    def on_classic_toggle(self):
+        App.get_running_app().update_setting("classic_style", self.ids.classic.state == "down")
+        if self.analysis is not None:
+            self._update_ai_status()
+        self.schedule_preview()
 
     def on_ai_toggle(self):
         App.get_running_app().update_setting("ai_assist", self.ids.ai.state == "down")
@@ -457,6 +478,7 @@ class ImportScreen(Screen):
             "clean": ids.clean.state == "down",
             "crop": tuple(round(value) for value in ids.crop.crop),
             "detail": ids.detail.value / 100,
+            "classic": ids.classic.state == "down",
         }
         if self.analysis is not None and ids.ai.state == "down":
             options["importance"] = self.analysis.importance
@@ -480,7 +502,7 @@ class ImportScreen(Screen):
         self._busy = True
         image, options, photo_id = self.work_image, self._options(), self._photo_id
         recommend_options = {key: value for key, value in options.items()
-                             if key not in ("color_count", "clean")}
+                             if key not in ("color_count", "clean", "classic")}
         key = (photo_id,) + tuple(sorted((k, id(v) if hasattr(v, "shape") else v)
                                          for k, v in recommend_options.items()))
         need_recommendation = key != self._recommend_key

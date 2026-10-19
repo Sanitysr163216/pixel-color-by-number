@@ -21,6 +21,7 @@ class Settings:
     music: bool = True                # 背景音乐
     sound_volume: float = 0.8         # 音效音量 0–1
     music_volume: float = 0.5         # 背景音乐音量 0–1
+    classic_style: bool = False       # 导入照片时用经典模式（第一版的算法，过渡更平滑）
     ai_assist: bool = True            # 导入照片时用 AI 识别人脸和主体（只在 macOS 上有）
 
     def save(self, path):

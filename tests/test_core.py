@@ -133,6 +133,15 @@ def test_converter_limits_colors_and_size():
     assert used == set(range(1, picture.color_count + 1))
 
 
+def test_classic_mode():
+    image = Image.new("RGB", (200, 100))
+    image.putdata([(x, y * 2, 128) for y in range(100) for x in range(200)])
+    picture = converter.convert(image, grid_size=32, color_count=8, classic=True)
+    assert (picture.width, picture.height) == (32, 16)
+    assert picture.color_count <= 8
+    assert set(picture.flat_numbers()) == set(range(1, picture.color_count + 1))
+
+
 def test_converter_crop():
     image = Image.new("RGB", (100, 100), "white")
     picture = converter.convert(image, grid_size=20, color_count=4, crop=(0, 0, 100, 50))

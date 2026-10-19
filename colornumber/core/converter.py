@@ -18,6 +18,9 @@
 
 另外提供 recommend_color_count()：为当前图片推荐一个颜色数。
 
+经典模式（classic=True）用的是第一版的做法：每格取平均颜色，再用 Pillow 的
+"中位切分"减少颜色，不锐化。边缘没那么清楚，但颜色过渡更平滑。
+
 颜色的距离单位是 ΔE（Delta E）：大约 2 是人眼刚好能分辨的差别，
 10 以下在调色板里就容易看混。
 """
@@ -321,9 +324,28 @@ def _prepare(image, brightness, contrast, saturation, crop, importance, subject,
     return image, importance, subject
 
 
+def _convert_classic(image, grid_size, color_count, clean):
+    """
+    经典模式（第一版的算法）：
+    1. BOX 缩放：每个格子取原图对应区域的平均颜色
+    2. 用 Pillow 的"中位切分"把颜色减少到 color_count 种（不抖动）
+    3. 清理杂色点：四周都不同色的格子改成邻居里最多的颜色（不看颜色差别）
+    """
+    width, height = grid_dimensions(*image.size, grid_size)
+    small = image.resize((width, height), Image.Resampling.BOX)
+    reduced = small.quantize(colors=color_count, method=Image.Quantize.MEDIANCUT,
+                             kmeans=3, dither=Image.Dither.NONE)
+    labels = np.asarray(reduced, dtype=np.int64)
+    palette = np.array(reduced.getpalette(), dtype=np.uint8).reshape(-1, 3)
+    if clean:
+        labels = _clean(labels, rgb_to_lab(palette), threshold=np.inf, passes=1)
+    return _renumber(labels, palette)
+
+
 def convert(image, grid_size=DEFAULT_GRID_SIZE, color_count=DEFAULT_COLOR_COUNT,
             brightness=1.0, contrast=1.0, saturation=1.0, clean=True, crop=None,
-            detail=DEFAULT_DETAIL, importance=None, subject=None, simplify_background=False):
+            detail=DEFAULT_DETAIL, importance=None, subject=None, simplify_background=False,
+            classic=False):
     """
     把一张已读取的图片转换成 Picture。
 
@@ -332,9 +354,12 @@ def convert(image, grid_size=DEFAULT_GRID_SIZE, color_count=DEFAULT_COLOR_COUNT,
     importance  AI 识别出的重要区域（人脸、眼睛等），和原图一样大的 0–1 数组
     subject     AI 识别出的主体，和原图一样大的 0–1 数组
     simplify_background  为 True 时把主体以外的背景虚化，颜色多分给主体
+    classic     为 True 时用经典模式（第一版的算法，颜色过渡更平滑；不用 detail 和 importance）
     """
     image, importance, subject = _prepare(image, brightness, contrast, saturation, crop,
                                           importance, subject, simplify_background)
+    if classic:
+        return _convert_classic(image, grid_size, color_count, clean)
     width, height, cells, weights, cell_importance = _cells(image, grid_size, detail, importance, subject)
     points = cells.reshape(-1, 3)
     centers = _palette(points, weights.reshape(-1), color_count)
