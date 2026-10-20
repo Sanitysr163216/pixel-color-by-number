@@ -14,6 +14,7 @@ from kivy.uix.screenmanager import FadeTransition, ScreenManager
 from colornumber.core import library
 from colornumber.core import audio
 from colornumber.core.music import MusicLibrary, featured_tracks
+from colornumber.core.i18n import project_name
 from colornumber.core.i18n import tr as translate
 from colornumber.core.settings import Settings
 from colornumber.core.storage import ProjectStore
@@ -133,10 +134,16 @@ class ColorNumberApp(App):
         self.settings_color_limit = self.settings.color_limit
         if name == "music":
             self.sounds.update_music()
+            if self.sounds.on_track_change:
+                self.sounds.on_track_change(self.sounds.current_track if value else None)
         if name in ("music_volume", "sound_volume"):
             self.sounds.update_volumes()
         if name == "music_source":
             self.sounds.source_changed()
+
+    def project_name(self, meta):
+        """作品显示的名字（内置图的默认名字会跟着语言变）。"""
+        return project_name(meta, self.lang)
 
     def track_title(self, key):
         """曲子显示的名字。"""
@@ -166,8 +173,10 @@ class ColorNumberApp(App):
         mac_gestures.install(gesture_target)
 
     def on_stop(self):
-        self.screens.get_screen("game").save()
+        if self.screens.current == "game":
+            self.screens.get_screen("game").save()
 
     def on_pause(self):
-        self.screens.get_screen("game").save()
+        if self.screens.current == "game":
+            self.screens.get_screen("game").save()
         return True

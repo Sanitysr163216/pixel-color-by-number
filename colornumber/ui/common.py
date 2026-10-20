@@ -5,6 +5,7 @@
 import io
 import os
 
+from kivy.animation import Animation
 from kivy.app import App
 from kivy.core.image import Image as CoreImage
 from kivy.core.text import DEFAULT_FONT, LabelBase
@@ -122,6 +123,16 @@ Builder.load_string("""
             size: self.size
             radius: [dp(18)]
 
+<LongPressButton>:
+    canvas.after:
+        # 按住时从左到右填满的进度条，满了就触发长按
+        Color:
+            rgba: 0.30, 0.52, 0.95, 0.35 if self.progress > 0 else 0
+        RoundedRectangle:
+            pos: self.pos
+            size: self.width * self.progress, self.height
+            radius: [dp(10)]
+
 <TextLabel@Label>:
     color: 0.2, 0.2, 0.25, 1
     font_size: "15sp"
@@ -162,6 +173,7 @@ class LongPressButton(RoundButton):
 
     __events__ = ("on_long_press",)
     long_press_time = NumericProperty(0.6)
+    progress = NumericProperty(0)        # 按住的进度 0–1，用来画进度条
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -173,9 +185,14 @@ class LongPressButton(RoundButton):
         if handled and self.collide_point(*touch.pos) and not getattr(touch, "is_mouse_scrolling", False):
             self._fired = False
             self._timer = Clock.schedule_once(lambda _dt: self._fire(), self.long_press_time)
+            Animation.cancel_all(self, "progress")
+            self.progress = 0
+            Animation(progress=1, duration=self.long_press_time).start(self)
         return handled
 
     def _fire(self):
+        Animation.cancel_all(self, "progress")
+        self.progress = 0
         if self.state == "down":
             self._fired = True
             self.dispatch("on_long_press")
@@ -184,6 +201,8 @@ class LongPressButton(RoundButton):
         if self._timer is not None:
             self._timer.cancel()
             self._timer = None
+        Animation.cancel_all(self, "progress")
+        self.progress = 0
         if touch.grab_current is self and self._fired:
             touch.ungrab(self)
             self.state = "normal"

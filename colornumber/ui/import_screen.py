@@ -666,9 +666,11 @@ class ImportScreen(Screen):
                 similar = converter.similar_color_pairs(picture.palette)
                 original = image.crop(options["crop"])
                 fidelity = converter.fidelity(original, picture)
+                adjusted = (any(options[key] != 1.0 for key in ("brightness", "contrast", "saturation"))
+                            or options.get("simplify_background", False))
                 original.thumbnail((1024, 1024), PILImage.Resampling.LANCZOS)
                 Clock.schedule_once(lambda _dt: self._show_preview(
-                    photo_id, picture, rendered, similar, original, fidelity))
+                    photo_id, picture, rendered, similar, original, fidelity, adjusted))
                 if need_recommendation:
                     count = converter.recommend_color_count(image, max_colors=color_limit, **recommend_options)
                     Clock.schedule_once(lambda _dt: self._show_recommendation(photo_id, key, count))
@@ -685,12 +687,14 @@ class ImportScreen(Screen):
             self._pending = False
             self._start_preview()
 
-    def _show_preview(self, photo_id, picture, rendered, similar, original, fidelity):
+    def _show_preview(self, photo_id, picture, rendered, similar, original, fidelity, adjusted):
         if photo_id != self._photo_id:
             return
         self.ids.preview.set_textures(pil_to_texture(rendered), pil_to_texture(original, nearest=False))
         text = tr("preview_info", width=picture.width, height=picture.height, colors=picture.color_count)
         text += "  " + tr("fidelity", score=fidelity)
+        if adjusted:
+            text += tr("fidelity_adjusted")
         if similar:
             text += "  [color=e0841c]" + tr("similar_warning", pairs=similar) + "[/color]"
         self.info = text
@@ -707,13 +711,27 @@ class ImportScreen(Screen):
             self.ids.color_count.value = self.recommended
 
     def start(self):
-        if self.work_image is None:
+        """在后台生成填色图（大图要一两秒），期间显示"正在生成"，也防止重复点击。"""
+        if self.work_image is None or getattr(self, "_starting", False):
             return
+        self._starting = True
         app = App.get_running_app()
-        picture = converter.convert(self.work_image, **self._options())
+        image, options = self.work_image, self._options()
         name = self.ids.name.text.strip() or tr("import_photo")
-        meta = app.store.create(picture, name, "import")
-        app.open_project(meta["id"])
+        waiting = Dialog(tr("creating_picture"), [])
+        waiting.open()
+
+        def work():
+            picture = converter.convert(image, **options)
+            Clock.schedule_once(lambda _dt: done(picture))
+
+        def done(picture):
+            meta = app.store.create(picture, name, "import")
+            waiting.dismiss()
+            self._starting = False
+            app.open_project(meta["id"])
+
+        threading.Thread(target=work, daemon=True).start()
 
 
 # ---------------------------------------------------------------------------

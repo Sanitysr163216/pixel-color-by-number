@@ -96,6 +96,10 @@ class SoundManager:
         source = getattr(self.settings, "music_source", "all")
         return [key for key, info in self._tracks.items() if source == "all" or info["source"] == source]
 
+    def has_tracks(self):
+        """当前曲库里有没有可以放的曲子。"""
+        return bool(self._eligible())
+
     def source_changed(self):
         """换了曲库：正在放的曲子不在新的曲库里，就换一首。"""
         self._order = []

@@ -322,6 +322,8 @@ def test_trackpad_event_handling():
         def scrollingDeltaX(self): return self.values.get("dx", 0)
         def scrollingDeltaY(self): return self.values.get("dy", 0)
         def window(self): return None
+        def modifierFlags(self): return self.values.get("flags", 0)
+        def isDirectionInvertedFromDevice(self): return False
 
     class FakeCanvas:
         def __init__(self): self.calls = []
@@ -336,7 +338,11 @@ def test_trackpad_event_handling():
     wheel = FakeEvent(AppKit.NSEventTypeScrollWheel, precise=False, dy=1)
     assert mac_gestures.handle_event(wheel, lambda: canvas) is wheel      # 鼠标滚轮交给 Kivy
     assert mac_gestures.handle_event(pinch, lambda: None) is pinch        # 不在画布上
-    assert canvas.calls == [("zoom", 1.1), ("pan", 6.0, -8.0)]
+    magic = FakeEvent(AppKit.NSEventTypeScrollWheel, precise=True, dy=10,
+                      flags=AppKit.NSEventModifierFlagCommand)
+    assert mac_gestures.handle_event(magic, lambda: canvas) is None      # Cmd + 滚动：缩放
+    assert canvas.calls[:2] == [("zoom", 1.1), ("pan", 6.0, -8.0)]
+    assert canvas.calls[2][0] == "zoom" and canvas.calls[2][1] > 1
 
 
 def test_music_library(tmp_path):
@@ -357,3 +363,31 @@ def test_music_library(tmp_path):
     library.remove(first["id"])
     assert all(t["id"] != first["id"] for t in library.tracks())
     assert not Path(first["file"]).exists()
+
+
+def test_save_after_delete_is_ignored(tmp_path):
+    store = ProjectStore(tmp_path)
+    meta = store.create(small_picture(), "test", "import")
+    _, game = store.load(meta["id"], BLOCK_WRONG)
+    store.delete(meta["id"])
+    store.save(meta, game)               # 不报错，也不会把作品"复活"
+    assert store.list() == []
+
+
+def test_project_name_follows_language():
+    from colornumber.core.i18n import project_name
+    meta = {"name": "橘猫", "source": "library:cat"}
+    assert project_name(meta, "en") == "Ginger Cat"
+    assert project_name({"name": "Ginger Cat", "source": "library:cat"}, "zh") == "橘猫"
+    assert project_name({"name": "我家的猫", "source": "library:cat"}, "en") == "我家的猫"   # 改过的名字不变
+    assert project_name({"name": "photo", "source": "import"}, "en") == "photo"
+
+
+def test_smooth_style_keeps_small_contrasting_features():
+    # 浅色皮肤上一个单格的深色点（像瞳孔）：平滑风格也要保留
+    image = Image.new("RGB", (160, 160), (235, 190, 160))
+    for x in range(70, 80):
+        for y in range(70, 80):
+            image.putpixel((x, y), (20, 15, 15))
+    picture = converter.convert(image, grid_size=16, color_count=4, style="smooth")
+    assert picture.numbers[7][7] != picture.numbers[0][0]

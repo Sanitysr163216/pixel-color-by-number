@@ -53,6 +53,8 @@ COLOR_COUNT_MIN = 4
 FINE_PIXELS = 1_200_000     # 计算格子颜色时，先把图缩到大约这么多像素
 MERGE_DELTA_E = 4.0         # 差别小于这个的两种颜色会合并
 SIMILAR_DELTA_E = 10.0      # 差别小于这个的两种颜色算"很接近"
+FEATURE_DELTA_E = 30.0      # 平滑时，和周围差别大于这个的小色块（瞳孔、高光）会保留
+FEATURE_MAX_CELLS = 6       # "小色块"：周围 5×5 范围里同色的格子不超过这么多
 
 
 # ---------------------------------------------------------------------------
@@ -227,12 +229,17 @@ def _cells_smooth(image, grid_size, importance=None, subject=None):
     return width, height, cells, weights, cell_importance
 
 
-def _majority(labels, passes, protect=None):
+def _majority(labels, passes, centers, protect=None):
     """
     多数投票：每个格子看自己和周围 8 个格子（一共 9 票），改成票数最多的颜色。
     这样单格的尖角会被抹掉、单格的凹口会被填上，直角会变圆，区域边界更圆润。
-    protect 为 True 的格子（比如五官）保持不变。
+
+    但"小而显眼"的细节会保留：如果一个格子和要改成的颜色差别很大（ΔE > 30），
+    而且它所在的同色小块很小（周围 5×5 里同色不超过 6 格，比如瞳孔、高光），就不改。
+    连在大色块边上的尖角不算小块，仍然会被抹平。
+    protect 为 True 的格子（比如 AI 找到的五官）也保持不变。
     """
+    distance = np.sqrt(((centers[:, None] - centers[None]) ** 2).sum(-1))
     count = int(labels.max()) + 1
     height, width = labels.shape
     rows = np.arange(height)[:, None]
@@ -245,7 +252,14 @@ def _majority(labels, passes, protect=None):
                 neighbor = padded[1 + dy:1 + dy + height, 1 + dx:1 + dx + width]
                 votes[rows, cols, neighbor] += 1
         voted = votes.argmax(-1)
-        labels = voted if protect is None else np.where(protect, labels, voted)
+
+        wide = np.pad(labels, 2, constant_values=-1)
+        same_nearby = sum((wide[2 + dy:2 + dy + height, 2 + dx:2 + dx + width] == labels).astype(np.int16)
+                          for dy in range(-2, 3) for dx in range(-2, 3))
+        keep = (distance[labels, voted] > FEATURE_DELTA_E) & (same_nearby <= FEATURE_MAX_CELLS)
+        if protect is not None:
+            keep |= protect
+        labels = np.where(keep, labels, voted)
     return labels
 
 
@@ -423,7 +437,7 @@ def convert(image, grid_size=DEFAULT_GRID_SIZE, color_count=DEFAULT_COLOR_COUNT,
     centers = _palette(points, weights.reshape(-1), color_count)
     labels = _nearest(points, centers).reshape(height, width)
     if style == "smooth":
-        labels = _majority(labels, 1 + round(2 * smoothness), protect=cell_importance > 0.4)
+        labels = _majority(labels, 1 + round(2 * smoothness), centers, protect=cell_importance > 0.4)
     if clean:
         # 重要区域（人脸）里更不容易被当成杂色点
         labels = _clean(labels, centers, threshold * (1 - 0.6 * cell_importance))

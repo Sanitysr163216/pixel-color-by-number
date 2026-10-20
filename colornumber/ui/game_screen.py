@@ -72,11 +72,11 @@ Builder.load_string("""
                 width: "90dp"
                 on_release: root.redo()
             RoundButton:
-                text: app.tr("hint", app.lang)
+                text: app.tr("finished_menu" if root.complete else "hint", app.lang)
                 primary: True
                 size_hint_x: None
                 width: "90dp"
-                on_release: root.hint()
+                on_release: root.show_completion() if root.complete else root.hint()
 
         BoxLayout:
             spacing: "8dp"
@@ -145,6 +145,18 @@ Builder.load_string("""
                     font_size: "11sp"
                     size_hint_y: None
                     height: "14dp"
+                BoxLayout:
+                    size_hint_y: None
+                    height: "40dp"
+                    spacing: "4dp"
+                    RoundButton:
+                        text: "+"
+                        font_size: "20sp"
+                        on_release: canvas_widget.zoom_at(canvas_widget.center_x, canvas_widget.center_y, 1.4)
+                    RoundButton:
+                        text: "-"
+                        font_size: "20sp"
+                        on_release: canvas_widget.zoom_at(canvas_widget.center_x, canvas_widget.center_y, 1 / 1.4)
                 RoundButton:
                     text: app.tr("fit_view", app.lang)
                     on_release: canvas_widget.fit()
@@ -240,6 +252,7 @@ class ColorSwatch(ButtonBehavior, Widget):
 class GameScreen(Screen):
     title = ObjectProperty("")
     percent = NumericProperty(0)
+    complete = BooleanProperty(False)     # 已完成时"提示"按钮变成"完成菜单"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -263,7 +276,7 @@ class GameScreen(Screen):
         self.meta = meta
         self.game = game
         game.wrong_mode = app.settings.wrong_mode
-        self.title = meta["name"]
+        self.title = app.project_name(meta)
         self._was_complete = game.is_complete()
         self.set_tool("brush")
         self.set_brush(1)
@@ -273,16 +286,20 @@ class GameScreen(Screen):
         self.canvas_widget.load_game(game)
         self._select(first)
         self._update_progress()
-        if self._was_complete:
-            Clock.schedule_once(lambda _dt: self.show_completion(), 0.3)
 
     def save(self):
         if self.meta is not None and self.game is not None:
             self.app.store.save(self.meta, self.game)
 
     def go_back(self):
+        if self.canvas_widget.locked:
+            return                      # 回放或一键填完的动画还在进行，等它结束
         self._save_trigger.cancel()
         self.save()
+        # 离开后不再拿着这张图：不然在作品集里"重新开始"或"删除"之后，
+        # 关闭程序时会把旧进度又存回去
+        self.meta = None
+        self.game = None
         App.get_running_app().show_home()
 
     def set_tool(self, name):
@@ -318,6 +335,7 @@ class GameScreen(Screen):
 
     def _update_progress(self):
         self.percent = int(self.game.progress() * 100)
+        self.complete = self.game.is_complete()
 
     # ------------------------------------------------------------------
     # 画布传来的事件
@@ -451,7 +469,9 @@ class GameScreen(Screen):
             lambda _dt: self.show_completion(), 0.4))
 
     def show_completion(self):
-        game, name = self.game, self.meta["name"]
+        if self.game is None or self.app.screens.current != "game":
+            return
+        game, name = self.game, self.app.project_name(self.meta)
         buttons = [(tr(f"export_{kind}"), lambda k=kind: export_game(game, name, k), "primary", False)
                    for kind in ("png", "gif", "mp4")]
         buttons += [

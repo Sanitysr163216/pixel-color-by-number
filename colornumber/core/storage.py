@@ -63,8 +63,10 @@ class ProjectStore:
         return meta
 
     def save(self, meta, game):
-        """保存进度、更新 meta 和缩略图。"""
+        """保存进度、更新 meta 和缩略图。作品已经被删除时什么都不做。"""
         folder = self._folder(meta["id"])
+        if not folder.exists():
+            return
         meta["updated"] = time.time()
         meta["completed"] = game.is_complete()
         meta["progress"] = game.progress()

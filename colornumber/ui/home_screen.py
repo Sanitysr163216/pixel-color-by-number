@@ -232,13 +232,13 @@ class HomeScreen(Screen):
             return
         for meta in metas:
             texture = _thumbnail_texture(app.store.thumbnail_path(meta["id"]))
-            grid.add_widget(Card(texture, meta["name"], _status_text(meta),
+            grid.add_widget(Card(texture, app.project_name(meta), _status_text(meta),
                                  on_open=lambda m=meta: app.open_project(m["id"]),
                                  on_menu=lambda m=meta: self._show_menu(m)))
 
     def _show_menu(self, meta):
         app = App.get_running_app()
-        name = meta["name"]
+        name = app.project_name(meta)
         buttons = [(tr("continue"), lambda: app.open_project(meta["id"]), "primary")]
         if meta["completed"]:
             for kind in ("png", "gif", "mp4"):
@@ -258,10 +258,10 @@ class HomeScreen(Screen):
     def _export(self, meta, kind):
         app = App.get_running_app()
         _, game = app.store.load(meta["id"], app.settings.wrong_mode)
-        export_game(game, meta["name"], kind)
+        export_game(game, app.project_name(meta), kind)
 
     def _rename(self, meta):
-        field = TextInput(text=meta["name"], multiline=False, font_size="16sp",
+        field = TextInput(text=App.get_running_app().project_name(meta), multiline=False, font_size="16sp",
                           size_hint_y=None, height=dp(42), padding=(dp(10), dp(10)))
 
         def save():

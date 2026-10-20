@@ -118,7 +118,14 @@ class SettingsScreen(Screen):
         def show(key=None):
             key = key or app.sounds.current_track
             title = app.track_title(key)
-            label.text = tr("now_playing", track=title) if title else tr("nothing_playing")
+            if not app.settings.music:
+                label.text = tr("music_is_off")
+            elif title:
+                label.text = tr("now_playing", track=title)
+            elif app.settings.music_source == "mine" and not app.music_library.tracks():
+                label.text = tr("no_my_music")
+            else:
+                label.text = tr("nothing_playing")
 
         app.sounds.on_track_change = show
         show()

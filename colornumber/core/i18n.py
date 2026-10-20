@@ -55,6 +55,7 @@ STRINGS = {
     "redo": {"zh": "重做", "en": "Redo"},
     "brush_size": {"zh": "笔刷大小", "en": "Brush size"},
     "hint": {"zh": "提示", "en": "Hint"},
+    "finished_menu": {"zh": "导出…", "en": "Export…"},
     "tool_brush": {"zh": "画笔", "en": "Brush"},
     "tool_wand": {"zh": "魔棒", "en": "Wand"},
     "tool_bucket": {"zh": "油漆桶", "en": "Bucket"},
@@ -66,8 +67,8 @@ STRINGS = {
     "fit_view": {"zh": "全图", "en": "Fit"},
     "progress": {"zh": "{percent}%", "en": "{percent}%"},
     "controls_help": {
-        "zh": "捏合/滚轮  缩放\n双指滑/右键拖  移动\nOption+点  吸色\nCmd+Z  撤销\n[ ]  笔刷大小\nH  提示",
-        "en": "Pinch/wheel  zoom\nTwo fingers/right-drag  pan\nOption+click  pick color\nCmd+Z  undo\n[ ]  brush size\nH  hint",
+        "zh": "捏合/滚轮/Cmd+滚动  缩放\n双指滑/右键拖  移动\nOption+点  吸色\nCmd+Z  撤销\n[ ]  笔刷大小\nH  提示",
+        "en": "Pinch/wheel/Cmd+scroll  zoom\nTwo fingers/right-drag  pan\nOption+click  pick color\nCmd+Z  undo\n[ ]  brush size\nH  hint",
     },
     "picture_complete": {"zh": "完成啦！", "en": "Finished!"},
     "export_png": {"zh": "导出图片 PNG", "en": "Export PNG"},
@@ -101,7 +102,9 @@ STRINGS = {
     "original_label": {"zh": "原图", "en": "Original"},
     "pixel_label": {"zh": "填色图", "en": "Pixel art"},
     "reset_defaults": {"zh": "恢复默认", "en": "Defaults"},
-    "fidelity": {"zh": "· 还原度 {score}%", "en": "· Fidelity {score}%"},
+    "fidelity": {"zh": "· 与原图相似 {score}%", "en": "· {score}% like the original"},
+    "fidelity_adjusted": {"zh": "（含你的调整）", "en": " (incl. your edits)"},
+    "creating_picture": {"zh": "正在生成填色图……", "en": "Creating your picture…"},
     "use_recommended": {"zh": "使用推荐", "en": "Use it"},
     "recommend_working": {"zh": "正在计算推荐的颜色数……", "en": "Finding a good color count…"},
     "recommended_colors": {"zh": "推荐 {count} 种颜色：能还原这张图，颜色之间也好区分",
@@ -139,6 +142,8 @@ STRINGS = {
     "music_volume": {"zh": "音乐音量", "en": "Music volume"},
     "now_playing": {"zh": "正在播放：{track}", "en": "Now playing: {track}"},
     "nothing_playing": {"zh": "音乐准备中……", "en": "Preparing music…"},
+    "music_is_off": {"zh": "背景音乐已关闭", "en": "Background music is off"},
+    "no_my_music": {"zh": "\"我的音乐\"里还没有歌，先导入几首吧", "en": "No songs in My music yet. Import some first."},
     "next_track": {"zh": "下一首", "en": "Next"},
     "music_source": {"zh": "曲库", "en": "Play from"},
     "source_all": {"zh": "全部", "en": "All"},
@@ -181,3 +186,16 @@ def tr(key, language, **values):
         return key
     text = entry.get(language) or entry["zh"]
     return text.format(**values) if values else text
+
+
+def project_name(meta, language):
+    """
+    作品显示的名字。内置图的作品如果还是默认名字（任何一种语言的），
+    就按当前语言显示；玩家自己改过的名字原样显示。
+    """
+    source = meta.get("source", "")
+    if source.startswith("library:"):
+        key = "library_" + source.split(":", 1)[1]
+        if key in STRINGS and meta["name"] in STRINGS[key].values():
+            return tr(key, language)
+    return meta["name"]
