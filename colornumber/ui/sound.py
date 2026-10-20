@@ -1,7 +1,12 @@
 """
-播放音效和背景音乐。声音文件由 core/audio.py 合成。
+播放音效和背景音乐。
 
-背景音乐是一个随机顺序的歌单：一首放完自动放下一首。
+背景音乐是一个随机顺序的歌单：一首放完自动放下一首。曲子有三个来源：
+- "featured"：精选音乐（assets/music，网上挑选的免费音乐）
+- "synth"：内置的合成音乐（core/audio.py）
+- "mine"：玩家自己导入的音乐（core/music.py）
+设置里的"曲库"决定从哪些来源里选。
+
 填色的"啵"声有 8 个音高，拖动时依次往上走，像在弹琴。
 """
 
@@ -20,10 +25,10 @@ class SoundManager:
         self._pops = []
         self._pop_index = 0
         self._last_pop = 0.0
-        self._tracks = {}              # 曲名 → 文件路径（生成好的才在这里）
+        self._tracks = {}              # 曲子的键 → {"path", "source", "title", "title_key"}
         self._order = []
         self._music = None             # 正在播放的 Sound
-        self.current_track = None      # 正在播放的曲名
+        self.current_track = None      # 正在播放的曲子的键
         self._switching = False        # 我们自己停止音乐时，不要自动跳下一首
         self.on_track_change = None    # 换歌时通知界面
 
@@ -66,18 +71,52 @@ class SoundManager:
         sound.play()
 
     # ------------------------------------------------------------------
-    # 背景音乐
+    # 曲库
     # ------------------------------------------------------------------
 
-    def add_track(self, name, path):
-        """一首曲子生成好了。如果现在没有音乐在放，就从它开始放。"""
-        self._tracks[name] = path
+    def add_track(self, key, path, source, title=None, title_key=None):
+        """加入一首曲子。如果现在没有音乐在放，就从它开始放。"""
+        self._tracks[key] = {"path": path, "source": source, "title": title, "title_key": title_key}
         if self._music is None:
             self.update_music()
 
+    def remove_track(self, key):
+        self._tracks.pop(key, None)
+        self._order = [name for name in self._order if name != key]
+        if self.current_track == key:
+            self._stop_music()
+            self.current_track = None
+            self.update_music()
+
+    def track_info(self, key):
+        return self._tracks.get(key)
+
+    def _eligible(self):
+        """按设置里的"曲库"筛选可以播放的曲子。"""
+        source = getattr(self.settings, "music_source", "all")
+        return [key for key, info in self._tracks.items() if source == "all" or info["source"] == source]
+
+    def source_changed(self):
+        """换了曲库：正在放的曲子不在新的曲库里，就换一首。"""
+        self._order = []
+        if self.current_track not in self._eligible():
+            self._stop_music()
+            self.current_track = None
+            if self.on_track_change:
+                self.on_track_change(None)
+            self.update_music()
+
+    # ------------------------------------------------------------------
+    # 播放
+    # ------------------------------------------------------------------
+
     def _next_name(self):
+        eligible = self._eligible()
+        if not eligible:
+            return None
+        self._order = [key for key in self._order if key in eligible]
         if not self._order:
-            self._order = list(self._tracks)
+            self._order = eligible[:]
             random.shuffle(self._order)
             if len(self._order) > 1 and self._order[0] == self.current_track:
                 self._order.append(self._order.pop(0))   # 避免同一首连放两次
@@ -92,20 +131,21 @@ class SoundManager:
             self._music = None
 
     def _play_next(self):
-        if not self._tracks:
-            return
         self._stop_music()
-        name = self._next_name()
-        sound = SoundLoader.load(self._tracks[name])
+        key = self._next_name()
+        if key is None:
+            return
+        sound = SoundLoader.load(self._tracks[key]["path"])
         if sound is None:
+            self._tracks.pop(key, None)                 # 打不开的文件从歌单里去掉
             return
         sound.volume = self.settings.music_volume
         sound.bind(on_stop=self._on_music_stop)
         self._music = sound
-        self.current_track = name
+        self.current_track = key
         sound.play()
         if self.on_track_change:
-            self.on_track_change(name)
+            self.on_track_change(key)
 
     def _on_music_stop(self, _sound):
         # 放完了（不是我们自己停的）就接着放下一首

@@ -132,9 +132,10 @@ class PaintCanvas(StencilView):
 
     @staticmethod
     def _make_texture(width, height):
-        texture = Texture.create(size=(width, height), colorfmt="rgba")
+        # 放大时保持方块感；缩小时（每格不到 1 个屏幕像素）用多级纹理平滑，避免跳格和闪烁
+        texture = Texture.create(size=(width, height), colorfmt="rgba", mipmap=True)
         texture.mag_filter = "nearest"
-        texture.min_filter = "nearest"
+        texture.min_filter = "linear_mipmap_linear"
         return texture
 
     # ------------------------------------------------------------------

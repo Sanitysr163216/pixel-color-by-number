@@ -12,7 +12,8 @@ from PIL import Image as PILImage
 
 from kivy.app import App
 from kivy.clock import Clock
-from kivy.graphics import Color, Line, Rectangle
+from kivy.core.text import Label as CoreLabel
+from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
@@ -91,6 +92,9 @@ Builder.load_string("""
                     text: app.tr("reset_crop", app.lang)
                     on_release: crop.reset()
                 RoundButton:
+                    text: app.tr("reset_defaults", app.lang)
+                    on_release: root.reset_defaults()
+                RoundButton:
                     text: app.tr("choose_photo", app.lang)
                     on_release: app.open_import()
             SliderRow:
@@ -122,9 +126,9 @@ Builder.load_string("""
         BoxLayout:
             orientation: "vertical"
             spacing: "6dp"
-            Image:
+            CompareView:
                 id: preview
-                fit_mode: "contain"
+                compare: compare.state == "down"
             Label:
                 text: root.info
                 markup: True
@@ -132,6 +136,34 @@ Builder.load_string("""
                 font_size: "13sp"
                 size_hint_y: None
                 height: "20dp"
+            BoxLayout:
+                size_hint_y: None
+                height: "34dp"
+                spacing: "6dp"
+                Chip:
+                    id: style_smooth
+                    text: app.tr("style_smooth", app.lang)
+                    group: "convert_style"
+                    height: "34dp"
+                    on_state: if self.state == "down": root.set_style("smooth")
+                Chip:
+                    id: style_clear
+                    text: app.tr("style_clear", app.lang)
+                    group: "convert_style"
+                    height: "34dp"
+                    on_state: if self.state == "down": root.set_style("clear")
+                Chip:
+                    id: style_classic
+                    text: app.tr("style_classic", app.lang)
+                    group: "convert_style"
+                    height: "34dp"
+                    on_state: if self.state == "down": root.set_style("classic")
+                Widget:
+                    size_hint_x: 0.15
+                Chip:
+                    id: compare
+                    text: app.tr("compare_original", app.lang)
+                    height: "34dp"
             SliderRow:
                 id: grid_size
                 title: app.tr("grid_size", app.lang)
@@ -167,10 +199,10 @@ Builder.load_string("""
                     disabled: root.recommended == 0
                     on_release: root.use_recommendation()
             SliderRow:
-                id: detail
-                disabled: classic.state == "down"
-                opacity: 0.4 if classic.state == "down" else 1
-                title: app.tr("detail", app.lang)
+                id: strength
+                disabled: root.style == "classic"
+                opacity: 0.4 if root.style == "classic" else 1
+                title: app.tr("detail" if root.style == "clear" else "smoothness", app.lang)
                 minimum: 0
                 maximum: 100
                 step: 5
@@ -180,10 +212,6 @@ Builder.load_string("""
                 size_hint_y: None
                 height: "36dp"
                 spacing: "8dp"
-                Chip:
-                    id: classic
-                    text: app.tr("classic_mode", app.lang)
-                    on_state: root.on_classic_toggle()
                 Chip:
                     id: clean
                     text: app.tr("clean_stray", app.lang)
@@ -354,8 +382,109 @@ class CropView(Widget):
         return False
 
 
+class CompareView(Widget):
+    """
+    转换结果的预览。打开"对比原图"后，左边显示原图、右边显示填色图，
+    中间的分隔线可以左右拖动，看看调整和转换让图片变了多少。
+    """
+
+    compare = BooleanProperty(False)
+    split = NumericProperty(0.5)          # 分隔线的位置，0 是最左，1 是最右
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.pixel_texture = None
+        self.original_texture = None
+        self._labels = {}
+        self.bind(pos=self._redraw, size=self._redraw, compare=self._redraw, split=self._redraw)
+
+    def set_textures(self, pixel_texture, original_texture):
+        self.pixel_texture = pixel_texture
+        self.original_texture = original_texture
+        self._redraw()
+
+    def clear(self):
+        self.pixel_texture = self.original_texture = None
+        self._redraw()
+
+    def _rect(self):
+        width, height = self.pixel_texture.size
+        scale = min(self.width / width, self.height / height)
+        shown_w, shown_h = width * scale, height * scale
+        return self.x + (self.width - shown_w) / 2, self.y + (self.height - shown_h) / 2, shown_w, shown_h
+
+    def _label(self, key):
+        """"原图""填色图"这样的小标签的贴图。"""
+        text = tr(key)
+        if self._labels.get(key, (None,))[0] != text:
+            label = CoreLabel(text=text, font_size=dp(12), color=(1, 1, 1, 1))
+            label.refresh()
+            self._labels[key] = (text, label.texture)
+        return self._labels[key][1]
+
+    def _redraw(self, *_):
+        self.canvas.clear()
+        if self.pixel_texture is None:
+            return
+        x, y, w, h = self._rect()
+        with self.canvas:
+            Color(1, 1, 1, 1)
+            if not self.compare or self.original_texture is None:
+                Rectangle(texture=self.pixel_texture, pos=(x, y), size=(w, h))
+                return
+            split_x = x + w * self.split
+            ow, oh = self.original_texture.size
+            pw, ph = self.pixel_texture.size
+            if self.split > 0.001:
+                Rectangle(texture=self.original_texture.get_region(0, 0, max(1, int(ow * self.split)), oh),
+                          pos=(x, y), size=(w * self.split, h))
+            if self.split < 0.999:
+                left = int(pw * self.split)
+                Rectangle(texture=self.pixel_texture.get_region(left, 0, max(1, pw - left), ph),
+                          pos=(split_x, y), size=(w - w * self.split, h))
+            # 分隔线和拖动把手
+            Color(1, 1, 1, 1)
+            Line(points=[split_x, y, split_x, y + h], width=dp(1.5))
+            Color(0.3, 0.52, 0.95, 1)
+            Ellipse(pos=(split_x - dp(11), y + h / 2 - dp(11)), size=(dp(22), dp(22)))
+            # 左上角"原图"、右上角"填色图"
+            for key, left_side in (("original_label", True), ("pixel_label", False)):
+                texture = self._label(key)
+                tw, th = texture.size
+                lx = x + dp(6) if left_side else x + w - tw - dp(14)
+                ly = y + h - th - dp(10)
+                Color(0, 0, 0, 0.45)
+                RoundedRectangle(pos=(lx - dp(4), ly - dp(2)), size=(tw + dp(8), th + dp(4)), radius=[dp(4)])
+                Color(1, 1, 1, 1)
+                Rectangle(texture=texture, pos=(lx, ly), size=(tw, th))
+
+    def on_touch_down(self, touch):
+        if self.compare and self.pixel_texture is not None and self.collide_point(*touch.pos):
+            touch.grab(self)
+            self._move_split(touch)
+            return True
+        return super().on_touch_down(touch)
+
+    def on_touch_move(self, touch):
+        if touch.grab_current is self:
+            self._move_split(touch)
+            return True
+        return False
+
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            touch.ungrab(self)
+            return True
+        return False
+
+    def _move_split(self, touch):
+        x, _y, w, _h = self._rect()
+        self.split = min(1.0, max(0.0, (touch.x - x) / w))
+
+
 class ImportScreen(Screen):
     info = StringProperty("")
+    style = StringProperty(converter.DEFAULT_STYLE)
     recommendation = StringProperty("")
     recommended = NumericProperty(0)
     ai_available = BooleanProperty(False)
@@ -376,7 +505,9 @@ class ImportScreen(Screen):
     def on_pre_enter(self, *_):
         settings = App.get_running_app().settings
         self.ids.ai.state = "down" if (settings.ai_assist and self.ai_available) else "normal"
-        self.ids.classic.state = "down" if settings.classic_style else "normal"
+        style = settings.convert_style if settings.convert_style in converter.STYLES else converter.DEFAULT_STYLE
+        self.ids[f"style_{style}"].state = "down"
+        self.set_style(style)
 
     # ------------------------------------------------------------------
     # 读取照片
@@ -401,7 +532,7 @@ class ImportScreen(Screen):
         display.thumbnail((DISPLAY_LONG_SIDE, DISPLAY_LONG_SIDE), PILImage.Resampling.LANCZOS)
         self.ids.crop.set_image(pil_to_texture(display, nearest=False), image.size)
         self.ids.name.text = Path(path).stem
-        self.ids.preview.texture = None
+        self.ids.preview.clear()
         self.ids.blur_background.state = "normal"
         self._start_analysis()
         self.schedule_preview()
@@ -438,7 +569,7 @@ class ImportScreen(Screen):
         result = self.analysis
         if result is None and not self.ai_status:
             return
-        if self.ids.classic.state == "down" and result is not None and result.faces:
+        if self.style == "classic" and result is not None and result.faces:
             self.ai_status = tr("ai_classic_note", faces=result.faces)
         elif result is None:
             self.ai_status = tr("ai_failed")
@@ -451,11 +582,29 @@ class ImportScreen(Screen):
         else:
             self.ai_status = tr("ai_found_nothing")
 
-    def on_classic_toggle(self):
-        App.get_running_app().update_setting("classic_style", self.ids.classic.state == "down")
+    def set_style(self, style):
+        """切换转换风格：平滑、清晰、经典。会记住选择。"""
+        self.style = style
+        for name in converter.STYLES:
+            self.ids[f"style_{name}"].state = "down" if name == style else "normal"
+        App.get_running_app().update_setting("convert_style", style)
         if self.analysis is not None:
             self._update_ai_status()
         self.schedule_preview()
+
+    def reset_defaults(self):
+        """一键恢复默认：不裁剪，所有滑块、风格和开关回到默认值。"""
+        ids = self.ids
+        ids.crop.reset()
+        for slider, value in ((ids.brightness, 1.0), (ids.contrast, 1.0), (ids.saturation, 1.0),
+                              (ids.grid_size, converter.DEFAULT_GRID_SIZE),
+                              (ids.color_count, converter.DEFAULT_COLOR_COUNT), (ids.strength, 50)):
+            slider.value = value
+        ids.clean.state = "down"
+        ids.blur_background.state = "normal"
+        ids.compare.state = "normal"
+        ids.ai.state = "down" if self.ai_available else "normal"
+        self.set_style(converter.DEFAULT_STYLE)
 
     def on_ai_toggle(self):
         App.get_running_app().update_setting("ai_assist", self.ids.ai.state == "down")
@@ -477,8 +626,9 @@ class ImportScreen(Screen):
             "saturation": ids.saturation.value,
             "clean": ids.clean.state == "down",
             "crop": tuple(round(value) for value in ids.crop.crop),
-            "detail": ids.detail.value / 100,
-            "classic": ids.classic.state == "down",
+            "style": self.style,
+            "detail": ids.strength.value / 100,
+            "smoothness": ids.strength.value / 100,
         }
         if self.analysis is not None and ids.ai.state == "down":
             options["importance"] = self.analysis.importance
@@ -502,7 +652,7 @@ class ImportScreen(Screen):
         self._busy = True
         image, options, photo_id = self.work_image, self._options(), self._photo_id
         recommend_options = {key: value for key, value in options.items()
-                             if key not in ("color_count", "clean", "classic")}
+                             if key not in ("color_count", "clean")}
         key = (photo_id,) + tuple(sorted((k, id(v) if hasattr(v, "shape") else v)
                                          for k, v in recommend_options.items()))
         need_recommendation = key != self._recommend_key
@@ -511,10 +661,14 @@ class ImportScreen(Screen):
         def work():
             try:
                 picture = converter.convert(image, **options)
-                cell = max(1, 600 // max(picture.width, picture.height))
+                cell = max(1, 1024 // max(picture.width, picture.height))
                 rendered = render_state(picture, picture.flat_numbers(), cell)
                 similar = converter.similar_color_pairs(picture.palette)
-                Clock.schedule_once(lambda _dt: self._show_preview(photo_id, picture, rendered, similar))
+                original = image.crop(options["crop"])
+                fidelity = converter.fidelity(original, picture)
+                original.thumbnail((1024, 1024), PILImage.Resampling.LANCZOS)
+                Clock.schedule_once(lambda _dt: self._show_preview(
+                    photo_id, picture, rendered, similar, original, fidelity))
                 if need_recommendation:
                     count = converter.recommend_color_count(image, max_colors=color_limit, **recommend_options)
                     Clock.schedule_once(lambda _dt: self._show_recommendation(photo_id, key, count))
@@ -531,11 +685,12 @@ class ImportScreen(Screen):
             self._pending = False
             self._start_preview()
 
-    def _show_preview(self, photo_id, picture, rendered, similar):
+    def _show_preview(self, photo_id, picture, rendered, similar, original, fidelity):
         if photo_id != self._photo_id:
             return
-        self.ids.preview.texture = pil_to_texture(rendered)
+        self.ids.preview.set_textures(pil_to_texture(rendered), pil_to_texture(original, nearest=False))
         text = tr("preview_info", width=picture.width, height=picture.height, colors=picture.color_count)
+        text += "  " + tr("fidelity", score=fidelity)
         if similar:
             text += "  [color=e0841c]" + tr("similar_warning", pairs=similar) + "[/color]"
         self.info = text

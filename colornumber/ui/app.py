@@ -13,6 +13,7 @@ from kivy.uix.screenmanager import FadeTransition, ScreenManager
 
 from colornumber.core import library
 from colornumber.core import audio
+from colornumber.core.music import MusicLibrary, featured_tracks
 from colornumber.core.i18n import tr as translate
 from colornumber.core.settings import Settings
 from colornumber.core.storage import ProjectStore
@@ -44,6 +45,12 @@ class ColorNumberApp(App):
         self.settings_color_limit = self.settings.color_limit
         self.store = ProjectStore(data / "projects")
         self.sounds = SoundManager(self.settings)
+        self.music_library = MusicLibrary(data / "music")
+        for track in featured_tracks():
+            self.sounds.add_track(f"featured:{Path(track['file']).name}", track["file"], "featured",
+                                  title=track["title"])
+        for track in self.music_library.tracks():
+            self.sounds.add_track(f"mine:{track['id']}", track["file"], "mine", title=track["name"])
         self._prepare_sounds(data)
 
         # 这些页面要用到 app.tr 等属性，所以在这里才 import
@@ -71,7 +78,8 @@ class ColorNumberApp(App):
             Clock.schedule_once(lambda _dt: self.sounds.load_effects(effects))
             for track in audio.MUSIC_TRACKS:
                 path = audio.ensure_music(folder, track)
-                Clock.schedule_once(lambda _dt, n=track.name, p=path: self.sounds.add_track(n, p))
+                Clock.schedule_once(lambda _dt, n=track.name, p=path: self.sounds.add_track(
+                    f"synth:{n}", p, "synth", title_key=f"music_{n}"))
         threading.Thread(target=work, daemon=True).start()
 
     # ------------------------------------------------------------------
@@ -127,6 +135,15 @@ class ColorNumberApp(App):
             self.sounds.update_music()
         if name in ("music_volume", "sound_volume"):
             self.sounds.update_volumes()
+        if name == "music_source":
+            self.sounds.source_changed()
+
+    def track_title(self, key):
+        """曲子显示的名字。"""
+        info = self.sounds.track_info(key) if key else None
+        if info is None:
+            return ""
+        return self.tr(info["title_key"]) if info["title_key"] else info["title"]
 
     def set_language(self, language):
         self.update_setting("language", language)

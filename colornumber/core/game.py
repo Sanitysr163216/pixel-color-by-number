@@ -161,10 +161,14 @@ class Game:
         self.end_stroke()
         return changed
 
+    def fill_number(self, number):
+        """把编号是 number 的格子全部填对，记进当前这一笔（不开始也不结束一笔）。"""
+        return [idx for idx in self.cells_by_number[number] if self._set(idx, number)]
+
     def bucket(self, number):
         """油漆桶：填满整张图里所有编号是 number 的格子。返回改变了的格子列表。"""
         self.begin_stroke()
-        changed = [idx for idx in self.cells_by_number[number] if self._set(idx, number)]
+        changed = self.fill_number(number)
         self.end_stroke()
         return changed
 

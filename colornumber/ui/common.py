@@ -11,7 +11,8 @@ from kivy.core.text import DEFAULT_FONT, LabelBase
 from kivy.graphics import Color, RoundedRectangle
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ListProperty
+from kivy.clock import Clock
+from kivy.properties import BooleanProperty, ListProperty, NumericProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -63,14 +64,17 @@ def tr(key, **values):
 
 
 def pil_to_texture(image, nearest=True):
-    """把 Pillow 图片变成 Kivy 能显示的贴图。nearest=True 时放大后保持像素的方块感。"""
+    """
+    把 Pillow 图片变成 Kivy 能显示的贴图。
+    nearest=True（像素图）：放大时保持方块感；缩小时用多级纹理（mipmap）平滑，
+    不然格子比屏幕像素还小时会跳格，出现锯齿和闪烁。
+    """
     data = io.BytesIO()
     image.save(data, format="png")
     data.seek(0)
-    texture = CoreImage(data, ext="png").texture
-    if nearest:
-        texture.mag_filter = "nearest"
-        texture.min_filter = "nearest"
+    texture = CoreImage(data, ext="png", mipmap=True).texture
+    texture.min_filter = "linear_mipmap_linear"
+    texture.mag_filter = "nearest" if nearest else "linear"
     return texture
 
 
@@ -148,6 +152,47 @@ class RoundButton(Button):
             base = BUTTON
         factor = 0.85 if self.state == "down" else 1.0
         self.fill_color = [base[0] * factor, base[1] * factor, base[2] * factor, 1]
+
+
+class LongPressButton(RoundButton):
+    """
+    可以长按的圆角按钮：短按触发 on_release，按住 long_press_time 秒触发 on_long_press
+    （长按后松开不会再触发 on_release）。
+    """
+
+    __events__ = ("on_long_press",)
+    long_press_time = NumericProperty(0.6)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._timer = None
+        self._fired = False
+
+    def on_touch_down(self, touch):
+        handled = super().on_touch_down(touch)
+        if handled and self.collide_point(*touch.pos) and not getattr(touch, "is_mouse_scrolling", False):
+            self._fired = False
+            self._timer = Clock.schedule_once(lambda _dt: self._fire(), self.long_press_time)
+        return handled
+
+    def _fire(self):
+        if self.state == "down":
+            self._fired = True
+            self.dispatch("on_long_press")
+
+    def on_touch_up(self, touch):
+        if self._timer is not None:
+            self._timer.cancel()
+            self._timer = None
+        if touch.grab_current is self and self._fired:
+            touch.ungrab(self)
+            self.state = "normal"
+            self._fired = False
+            return True
+        return super().on_touch_up(touch)
+
+    def on_long_press(self):
+        pass
 
 
 class Chip(ToggleButton):

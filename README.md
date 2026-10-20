@@ -7,16 +7,19 @@
 ## 功能
 
 - **内置图库**：蘑菇、橘猫、草莓、冰淇淋、小房子、仙人掌、小丑鱼、湖边日落
-- **导入照片**（JPG / PNG / iPhone 的 HEIC 等）：裁剪，调整亮度、对比度、饱和度，自由选择格子数、颜色数和细节程度，实时预览
-  - **更清晰的转换**：在 Lab 颜色空间里选色（颜色更好区分），边缘锐化，眼白、嘴唇、高光这类小而显眼的颜色会单独留出名额；清理杂色点时保留高对比的细节
+- **导入照片**（JPG / PNG / iPhone 的 HEIC 等）：裁剪，调整亮度、对比度、饱和度，自由选择格子数和颜色数，实时预览，一键恢复默认
+  - **三种风格**：**平滑**（默认，颜色过渡柔和，边界圆润没有尖角）、**清晰**（锐化边缘，细节最多）、**经典**（第一版的算法）
+  - **对比原图**：拖动分隔线左右对比原图和填色图，并显示"还原度"，看出调整和转换让图片变了多少
+  - 都在 Lab 颜色空间里选色（颜色更好区分），眼白、嘴唇、高光这类小而显眼的颜色会单独留出名额
   - **推荐颜色数**：为每张图算出一个"能还原、颜色又好区分"的颜色数，一键使用；颜色太接近时会提醒
   - **AI 识别**（macOS）：用系统自带的 Apple Vision 离线识别人脸、五官和主体，五官保留更多细节，还可以一键虚化背景
 - **填色**：点击或拖动上色，笔刷可选 1×1、3×3、5×5；滚轮或触控板捏合缩放，触控板双指滑动移动画布；远看是灰色轮廓，放大后渐变成白底和编号
-- **辅助工具**（都可以无限使用）：高亮当前编号、魔棒（填满相连的同编号区域）、油漆桶（填满整张图的同一编号）、提示（自动移动到还没填的格子并闪烁）、吸管（Option + 点击选中这一格的颜色）、撤销（步数不限，关闭程序后仍然保留）和重做
+- **辅助工具**（都可以无限使用）：高亮当前编号、魔棒（填满相连的同编号区域）、油漆桶（填满整张图的同一编号；**长按**一键填完整张图）、提示（自动移动到还没填的格子并闪烁）、吸管（Option + 点击选中这一格的颜色）、撤销（步数不限，关闭程序后仍然保留）和重做
 - **颜色栏**：显示每种颜色的剩余进度，填完打勾，并自动跳到下一种颜色
 - **完成之后**：彩带庆祝和填色过程快速回放；可以导出 PNG 图片、GIF 动图、MP4 视频
 - **作品集**：按"进行中/已完成"筛选，可以继续、重命名、重新开始、导出、删除；进度自动保存
-- **声音**（全部由代码合成）：5 首不同风格的背景音乐随机播放，可以切下一首；填色时"啵"的音效会按五声音阶往上走，填错有单独的提示音
+- **背景音乐**：8 首网上精选的轻松音乐（CC0 授权，见下文）+ 5 首代码合成的音乐，随机播放，可以切下一首；可以**导入自己的音乐**（MP3、OGG、FLAC、WAV、M4A 等），并选择只放某一类
+- **音效**（代码合成）：填色时"啵"的音效会按五声音阶往上走，填错有单独的提示音
 - **设置**：中英文切换、填错时的处理方式（不让填，或填上但标为错误）、更大的格子和颜色上限、音效和音乐的开关与音量
 
 ## 安装和运行
@@ -53,6 +56,7 @@ conda env update --file environment.yml
 | 吸管（选中某格的颜色） | 按住 `Option`（Windows 上是 `Alt`）点击格子 |
 | 撤销 / 重做 | `Cmd+Z` / `Cmd+Shift+Z`（Windows 上是 `Ctrl+Z` / `Ctrl+Y`） |
 | 笔刷大小 | `[` 变小，`]` 变大 |
+| 一键填完整张图 | 长按"油漆桶"按钮 |
 | 提示 | `H` |
 | 切换工具 | `B` 画笔、`W` 魔棒、`M` 移动 |
 | 显示全图 | `0` |
@@ -73,6 +77,8 @@ colornumber/
     picture.py           一张填色图的数据（调色板 + 编号格子）
     converter.py         照片 → 填色图（Lab 选色、锐化、推荐颜色数）
     vision.py            AI 识别人脸、五官和主体（Apple Vision，只在 macOS 上）
+    music.py             背景音乐曲库：精选音乐和"我的音乐"（导入、转换格式、删除）
+  assets/music/          精选音乐（OGG）和 credits.json（作者、许可证、来源）
     game.py              填色进度、魔棒、油漆桶、撤销、提示、回放
     storage.py           作品存档
     settings.py          设置
@@ -115,6 +121,22 @@ pytest
 - 导出 MP4：iPhone 上没有 ffmpeg，需要换一种方式
 - AI 识别：iOS 也有 Vision 框架，但要改用 kivy-ios 的 pyobjus 来调用
 - 布局：适配竖屏和小屏幕
+
+## 精选音乐的来源
+
+这 8 首音乐都来自 OpenGameArt 的 ["CC0 - Calm / Relaxing Music"](https://opengameart.org/content/cc0-calm-relaxing-music) 合集，
+许可证都是 CC0（公有领域），可以自由使用和分发。下载后转成了 OGG 并统一了响度。感谢各位作者：
+
+| 曲名 | 作者 | 来源 |
+|---|---|---|
+| Vaporware | cynicmusic（The Cynic Project） | [链接](https://opengameart.org/content/calm-piano-1-vaporware) |
+| Good Morning | Cakeflaps @ You're Perfect Studio | [链接](https://opengameart.org/content/good-morning) |
+| Another August | cynicmusic（The Cynic Project） | [链接](https://opengameart.org/content/another-august) |
+| November Snow | cynicmusic（The Cynic Project） | [链接](https://opengameart.org/content/november-snow) |
+| Serenade | Pro Sensory（Alex McCulloch） | [链接](https://opengameart.org/content/serenade-guitar) |
+| Bossa Shop Theme | SpringySpringo | [链接](https://opengameart.org/content/bossa-shop-theme-in-low-fi-and-hd) |
+| A Simple Trifle | jestar | [链接](https://opengameart.org/content/a-simple-trifle) |
+| Menu Chill | etrock | [链接](https://opengameart.org/content/menu-chill-music) |
 
 ## 许可证
 

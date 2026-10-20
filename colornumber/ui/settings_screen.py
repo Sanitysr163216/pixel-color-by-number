@@ -2,7 +2,13 @@
 设置页面：语言、填错模式、格子和颜色上限、声音。
 """
 
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.graphics import Color, Rectangle
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
@@ -12,8 +18,9 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.slider import Slider
 
 from colornumber.core.game import ALLOW_WRONG, BLOCK_WRONG
+from colornumber.core.music import AUDIO_TYPES
 from colornumber.core.settings import COLOR_LIMIT_CHOICES, GRID_LIMIT_CHOICES
-from colornumber.ui.common import BACKGROUND, TEXT, Chip, RoundButton, confirm, tr
+from colornumber.ui.common import BACKGROUND, TEXT, Chip, Dialog, RoundButton, confirm, message, tr
 
 
 class SettingsScreen(Screen):
@@ -70,7 +77,14 @@ class SettingsScreen(Screen):
             "music", [(True, tr("on")), (False, tr("off"))], settings.music,
             lambda value, _revert: app.update_setting("music", value)))
         rows.add_widget(self._slider_row("music_volume", settings.music_volume))
+        rows.add_widget(self._choice_row(
+            "music_source", [("all", tr("source_all")), ("featured", tr("source_featured")),
+                             ("synth", tr("source_synth")), ("mine", tr("source_mine"))],
+            settings.music_source, lambda value, _revert: app.update_setting("music_source", value)))
         rows.add_widget(self._now_playing_row())
+        rows.add_widget(self._my_music_row())
+        for track in app.music_library.tracks():
+            rows.add_widget(self._my_track_row(track))
 
         scroll = ScrollView()
         scroll.add_widget(rows)
@@ -101,9 +115,10 @@ class SettingsScreen(Screen):
         label = Label(color=TEXT, font_size="15sp", halign="left", valign="middle")
         label.bind(size=lambda widget, value: setattr(widget, "text_size", value))
 
-        def show(name=None):
-            name = name or app.sounds.current_track
-            label.text = tr("now_playing", track=tr(f"music_{name}")) if name else tr("nothing_playing")
+        def show(key=None):
+            key = key or app.sounds.current_track
+            title = app.track_title(key)
+            label.text = tr("now_playing", track=title) if title else tr("nothing_playing")
 
         app.sounds.on_track_change = show
         show()
@@ -112,6 +127,62 @@ class SettingsScreen(Screen):
         row.add_widget(button)
         row.add_widget(label)
         return row
+
+    def _my_music_row(self):
+        """"我的音乐"：导入按钮和状态文字。"""
+        row = BoxLayout(size_hint_y=None, height=dp(40), spacing=dp(8))
+        row.add_widget(self._title("my_music"))
+        button = RoundButton(text=tr("import_music"), primary=True, size_hint_x=None, width=dp(150))
+        button.bind(on_release=lambda _b: pick_audio(self._import_music))
+        row.add_widget(button)
+        count = len(App.get_running_app().music_library.tracks())
+        self._music_status = Label(text=tr("my_music_count", count=count), color=TEXT, font_size="14sp",
+                                   halign="left", valign="middle")
+        self._music_status.bind(size=lambda widget, value: setattr(widget, "text_size", value))
+        row.add_widget(self._music_status)
+        return row
+
+    def _my_track_row(self, track):
+        row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(8))
+        row.add_widget(Label(size_hint_x=None, width=dp(220)))
+        name = Label(text=track["name"], color=TEXT, font_size="14sp", halign="left", valign="middle",
+                     shorten=True, shorten_from="right")
+        name.bind(size=lambda widget, value: setattr(widget, "text_size", value))
+        row.add_widget(name)
+        delete = RoundButton(text=tr("delete"), size_hint=(None, None), size=(dp(80), dp(32)), font_size="13sp")
+        delete.bind(on_release=lambda _b: confirm(tr("confirm_delete_music", name=track["name"]),
+                                                  lambda: self._delete_music(track), tr("delete"), danger=True))
+        row.add_widget(delete)
+        return row
+
+    def _import_music(self, paths):
+        """在后台导入（可能要转换格式），导入完刷新页面。"""
+        app = App.get_running_app()
+        self._music_status.text = tr("importing_music")
+
+        def work():
+            added, failed = [], []
+            for path in paths:
+                try:
+                    added.append(app.music_library.add(path))
+                except Exception:      # 打不开或转换失败的文件记下来告诉玩家
+                    failed.append(Path(path).name)
+            Clock.schedule_once(lambda _dt: done(added, failed))
+
+        def done(added, failed):
+            for track in added:
+                app.sounds.add_track(f"mine:{track['id']}", track["file"], "mine", title=track["name"])
+            self.build()
+            if failed:
+                message(tr("import_music_failed", files="\n".join(failed)))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _delete_music(self, track):
+        app = App.get_running_app()
+        app.sounds.remove_track(f"mine:{track['id']}")
+        app.music_library.remove(track["id"])
+        self.build()
 
     def _choice_row(self, title_key, options, current, on_choose):
         """
@@ -170,3 +241,38 @@ class SettingsScreen(Screen):
             return
         confirm(tr("color_warning"), lambda: app.update_setting("color_limit", value),
                 title=tr("warning"), on_no=revert)
+
+
+# ---------------------------------------------------------------------------
+# 选择音乐文件：macOS 用系统的选择窗口（可以一次选多首），其他系统用 Kivy 的文件列表
+# ---------------------------------------------------------------------------
+
+def pick_audio(on_chosen):
+    """让玩家选一首或几首音乐，选好后调用 on_chosen(路径列表)。"""
+    if sys.platform == "darwin":
+        script = (f'set picked to choose file of type {{"public.audio"}} with prompt "{tr("pick_music_title")}" '
+                  'with multiple selections allowed\n'
+                  'set output to ""\n'
+                  'repeat with chosen in picked\n'
+                  '  set output to output & POSIX path of chosen & linefeed\n'
+                  'end repeat\n'
+                  'return output')
+
+        def work():
+            result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            paths = [line for line in result.stdout.splitlines() if line.strip()]
+            if result.returncode == 0 and paths:
+                Clock.schedule_once(lambda _dt: on_chosen(paths))
+
+        threading.Thread(target=work, daemon=True).start()
+        return
+
+    from kivy.uix.filechooser import FileChooserListView
+    chooser = FileChooserListView(path=str(Path.home()), filters=list(AUDIO_TYPES), multiselect=True,
+                                  size_hint_y=None, height=dp(360))
+    dialog = Dialog("", [
+        (tr("cancel"), None, "normal"),
+        (tr("ok"), lambda: chooser.selection and on_chosen(list(chooser.selection)), "primary"),
+    ], title=tr("pick_music_title"), content=chooser)
+    dialog.width = dp(640)
+    dialog.open()

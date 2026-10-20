@@ -14,7 +14,8 @@ from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.widget import Widget
 
-from colornumber.ui.common import ACCENT, Chip, Dialog, RoundButton, contrast_text_color, tr  # noqa: F401
+from colornumber.ui.common import (ACCENT, Chip, Dialog, LongPressButton, RoundButton,  # noqa: F401
+                                   confirm, contrast_text_color, tr)
 from colornumber.ui.confetti import Confetti  # noqa: F401  （KV 里用到）
 from colornumber.ui.exporting import export_game
 from colornumber.ui.paint_canvas import PaintCanvas  # noqa: F401  （KV 里用到）
@@ -134,9 +135,16 @@ Builder.load_string("""
                 Widget:
                     size_hint_y: None
                     height: "4dp"
-                RoundButton:
+                LongPressButton:
                     text: app.tr("tool_bucket", app.lang)
                     on_release: root.bucket()
+                    on_long_press: root.ask_fill_all()
+                Label:
+                    text: app.tr("bucket_hint", app.lang)
+                    color: 0.5, 0.5, 0.55, 1
+                    font_size: "11sp"
+                    size_hint_y: None
+                    height: "14dp"
                 RoundButton:
                     text: app.tr("fit_view", app.lang)
                     on_release: canvas_widget.fit()
@@ -378,6 +386,39 @@ class GameScreen(Screen):
         if self.canvas_widget.locked:
             return
         self.canvas_widget.apply_action(self.game.bucket(self.canvas_widget.selected))
+
+    def ask_fill_all(self):
+        """长按油漆桶：确认后一键填完整张图。"""
+        if self.canvas_widget.locked or self.game.is_complete():
+            return
+        confirm(tr("confirm_fill_all", cells=self.game.total_remaining()), self.fill_all,
+                yes_label=tr("fill_all"))
+
+    def fill_all(self):
+        """
+        按颜色一种一种快速填满，看起来像动画；整个过程算作一笔，撤销一次就能全部撤回。
+        """
+        game, canvas = self.game, self.canvas_widget
+        numbers = [n for n in range(1, game.picture.color_count + 1) if game.remaining_count(n) > 0]
+        if not numbers:
+            return
+        canvas.locked = True
+        game.begin_stroke()
+
+        def step(_dt):
+            number = numbers.pop(0)
+            self._select(number)
+            changed = game.fill_number(number)
+            canvas.refresh_cells(changed)
+            self.on_cells_changed(changed)
+            if numbers:
+                return True
+            game.end_stroke()
+            canvas.locked = False
+            self.on_stroke_end()
+            return False
+
+        Clock.schedule_interval(step, min(0.15, 2.5 / len(numbers)))
 
     def hint(self):
         if self.canvas_widget.locked or self.game.is_complete():

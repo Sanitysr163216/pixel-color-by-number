@@ -136,10 +136,20 @@ def test_converter_limits_colors_and_size():
 def test_classic_mode():
     image = Image.new("RGB", (200, 100))
     image.putdata([(x, y * 2, 128) for y in range(100) for x in range(200)])
-    picture = converter.convert(image, grid_size=32, color_count=8, classic=True)
+    picture = converter.convert(image, grid_size=32, color_count=8, style="classic")
     assert (picture.width, picture.height) == (32, 16)
     assert picture.color_count <= 8
     assert set(picture.flat_numbers()) == set(range(1, picture.color_count + 1))
+
+
+def test_fidelity():
+    image = Image.new("RGB", (64, 64))
+    image.putdata([(x * 4, y * 4, 128) for y in range(64) for x in range(64)])
+    many = converter.fidelity(image, converter.convert(image, grid_size=16, color_count=32))
+    few = converter.fidelity(image, converter.convert(image, grid_size=16, color_count=4))
+    changed = converter.fidelity(image, converter.convert(image, grid_size=16, color_count=32, saturation=0.0))
+    assert 0 <= few < many <= 100
+    assert changed < many                       # 调整越多，还原度越低
 
 
 def test_converter_crop():
@@ -221,6 +231,18 @@ def test_redo():
     assert game.redo() == []
 
 
+def test_fill_all_in_one_stroke():
+    game = Game(small_picture())
+    game.paint(0, 1)
+    game.begin_stroke()
+    for number in (1, 2, 3):
+        game.fill_number(number)
+    game.end_stroke()
+    assert game.is_complete()
+    game.undo()                       # 一次撤销全部撤回（开始前不在笔画里填的那格不算）
+    assert game.total_remaining() == 8
+
+
 def test_lab_round_trip():
     colors = np.array([[255, 0, 0], [12, 200, 90], [255, 255, 255], [0, 0, 0]])
     assert np.abs(converter.lab_to_rgb(converter.rgb_to_lab(colors)).astype(int) - colors).max() <= 1
@@ -240,10 +262,26 @@ def test_clean_keeps_contrasting_detail():
     for x in range(20, 30):
         for y in range(20, 30):
             image.putpixel((x, y), (222, 178, 150))
-    picture = converter.convert(image, grid_size=16, color_count=4)
+    picture = converter.convert(image, grid_size=16, color_count=4, style="clear")
     numbers = picture.numbers
-    assert numbers[7][7] != numbers[0][0]          # 黑点保留
+    assert numbers[7][7] != numbers[0][0]          # 清晰风格：黑点保留
     assert numbers[2][2] == numbers[0][0]          # 低对比的点被清理
+
+
+def test_smooth_style_rounds_off_spikes():
+    # 一块方形色块，右边伸出一个单格的尖角
+    image = Image.new("RGB", (160, 160), (240, 240, 240))
+    for x in range(40, 120):
+        for y in range(40, 120):
+            image.putpixel((x, y), (40, 90, 200))
+    for x in range(120, 130):
+        for y in range(70, 80):
+            image.putpixel((x, y), (40, 90, 200))
+    smooth = converter.convert(image, grid_size=16, color_count=4, style="smooth")
+    clear = converter.convert(image, grid_size=16, color_count=4, style="clear", clean=False)
+    assert clear.numbers[7][12] != clear.numbers[0][0]       # 清晰风格保留尖角
+    assert smooth.numbers[7][12] == smooth.numbers[0][0]     # 平滑风格把尖角抹平
+    assert smooth.numbers[7][7] != smooth.numbers[0][0]      # 色块本身还在
 
 
 def test_recommend_color_count_for_simple_art():
@@ -299,3 +337,23 @@ def test_trackpad_event_handling():
     assert mac_gestures.handle_event(wheel, lambda: canvas) is wheel      # 鼠标滚轮交给 Kivy
     assert mac_gestures.handle_event(pinch, lambda: None) is pinch        # 不在画布上
     assert canvas.calls == [("zoom", 1.1), ("pan", 6.0, -8.0)]
+
+
+def test_music_library(tmp_path):
+    import subprocess
+    from colornumber.core import music
+    wav = tmp_path / "song.wav"
+    audio.save_wav(audio.make_color_done(), wav, audio.EFFECT_RATE)
+    library = music.MusicLibrary(tmp_path / "library")
+    first = library.add(wav)
+    assert first["name"] == "song" and Path(first["file"]).suffix == ".wav"
+    ffmpeg = music._ffmpeg()
+    if ffmpeg:
+        m4a = tmp_path / "phone.m4a"
+        subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(wav), "-c:a", "aac", str(m4a)], check=True)
+        second = library.add(m4a)
+        assert Path(second["file"]).suffix == ".ogg" and Path(second["file"]).stat().st_size > 1000
+    assert [t["name"] for t in library.tracks()][0] == "song"
+    library.remove(first["id"])
+    assert all(t["id"] != first["id"] for t in library.tracks())
+    assert not Path(first["file"]).exists()

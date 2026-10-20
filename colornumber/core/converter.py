@@ -18,8 +18,11 @@
 
 另外提供 recommend_color_count()：为当前图片推荐一个颜色数。
 
-经典模式（classic=True）用的是第一版的做法：每格取平均颜色，再用 Pillow 的
-"中位切分"减少颜色，不锐化。边缘没那么清楚，但颜色过渡更平滑。
+一共有三种风格（style 参数）：
+- "smooth" 平滑（默认）：不锐化，颜色按面积分配，渐变变成一条条干净的色带；
+  最后用"多数投票"把区域边界上单格的尖角、凹口抹平，形状更圆润
+- "clear"  清晰：上面第 3 步的锐化和细节加权，边缘最清楚
+- "classic" 经典：第一版的做法——每格取平均颜色，再用 Pillow 的"中位切分"减少颜色
 
 颜色的距离单位是 ΔE（Delta E）：大约 2 是人眼刚好能分辨的差别，
 10 以下在调色板里就容易看混。
@@ -41,6 +44,9 @@ except ImportError:
 DEFAULT_GRID_SIZE = 48
 DEFAULT_COLOR_COUNT = 16
 DEFAULT_DETAIL = 0.5
+DEFAULT_SMOOTHNESS = 0.5
+STYLES = ("smooth", "clear", "classic")
+DEFAULT_STYLE = "smooth"
 GRID_SIZE_MIN = 16
 COLOR_COUNT_MIN = 4
 
@@ -198,6 +204,51 @@ def _cells(image, grid_size, detail, importance=None, subject=None):
     return width, height, cells, weights, cell_importance
 
 
+def _cells_smooth(image, grid_size, importance=None, subject=None):
+    """
+    平滑风格的格子颜色和权重：按格子求平均颜色，不锐化；权重基本按面积，
+    鲜艳的颜色稍微高一点。返回值和 _cells 一样。
+    （平滑程度不在这里起作用，而是决定后面"多数投票"做几轮。）
+    """
+    width, height = grid_dimensions(*image.size, grid_size)
+    factor = int(np.clip(np.sqrt(FINE_PIXELS / (width * height)), 2, 8))
+    fine = image.resize((width * factor, height * factor), Image.Resampling.LANCZOS)
+    linear = _to_linear(np.asarray(fine, dtype=np.float64) / 255)
+    cells = _linear_to_lab(linear.reshape(height, factor, width, factor, 3).mean((1, 3)))
+
+    cell_importance = np.zeros((height, width))
+    if importance is not None:
+        cell_importance = _resize_map(importance, width, height)
+
+    chroma = np.hypot(cells[..., 1], cells[..., 2])
+    weights = (1 + 0.3 * np.clip(chroma / 60, 0, 1)) * (1 + 4 * cell_importance)
+    if subject is not None:
+        weights *= 0.35 + 0.65 * _resize_map(subject, width, height)
+    return width, height, cells, weights, cell_importance
+
+
+def _majority(labels, passes, protect=None):
+    """
+    多数投票：每个格子看自己和周围 8 个格子（一共 9 票），改成票数最多的颜色。
+    这样单格的尖角会被抹掉、单格的凹口会被填上，直角会变圆，区域边界更圆润。
+    protect 为 True 的格子（比如五官）保持不变。
+    """
+    count = int(labels.max()) + 1
+    height, width = labels.shape
+    rows = np.arange(height)[:, None]
+    cols = np.arange(width)[None, :]
+    for _ in range(passes):
+        votes = np.zeros((height, width, count), dtype=np.int16)
+        padded = np.pad(labels, 1, mode="edge")
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                neighbor = padded[1 + dy:1 + dy + height, 1 + dx:1 + dx + width]
+                votes[rows, cols, neighbor] += 1
+        voted = votes.argmax(-1)
+        labels = voted if protect is None else np.where(protect, labels, voted)
+    return labels
+
+
 def _resize_map(values, width, height):
     """把 0–1 的数组缩放到格子大小（按面积平均）。"""
     image = Image.fromarray(np.asarray(values, dtype=np.float32))
@@ -345,28 +396,37 @@ def _convert_classic(image, grid_size, color_count, clean):
 def convert(image, grid_size=DEFAULT_GRID_SIZE, color_count=DEFAULT_COLOR_COUNT,
             brightness=1.0, contrast=1.0, saturation=1.0, clean=True, crop=None,
             detail=DEFAULT_DETAIL, importance=None, subject=None, simplify_background=False,
-            classic=False):
+            style=DEFAULT_STYLE, smoothness=DEFAULT_SMOOTHNESS):
     """
     把一张已读取的图片转换成 Picture。
 
     crop        裁剪框 (左, 上, 右, 下)，单位是原图的像素；None 表示不裁剪
-    detail      细节程度 0–1：越大边缘越锐利、细节越多，杂色点也越多
+    style       风格："smooth" 平滑、"clear" 清晰、"classic" 经典（见文件开头）
+    smoothness  平滑程度 0–1（平滑风格用）：越大边界越圆润，小的尖角和杂点越少
+    detail      细节程度 0–1（清晰风格用）：越大边缘越锐利、细节越多，杂色点也越多
     importance  AI 识别出的重要区域（人脸、眼睛等），和原图一样大的 0–1 数组
     subject     AI 识别出的主体，和原图一样大的 0–1 数组
     simplify_background  为 True 时把主体以外的背景虚化，颜色多分给主体
-    classic     为 True 时用经典模式（第一版的算法，颜色过渡更平滑；不用 detail 和 importance）
+    经典风格不使用 AI 的 importance（虚化背景仍然有效）。
     """
     image, importance, subject = _prepare(image, brightness, contrast, saturation, crop,
                                           importance, subject, simplify_background)
-    if classic:
+    if style == "classic":
         return _convert_classic(image, grid_size, color_count, clean)
-    width, height, cells, weights, cell_importance = _cells(image, grid_size, detail, importance, subject)
+    if style == "clear":
+        width, height, cells, weights, cell_importance = _cells(image, grid_size, detail, importance, subject)
+        threshold = 25 - 15 * detail
+    else:
+        width, height, cells, weights, cell_importance = _cells_smooth(image, grid_size, importance, subject)
+        threshold = 18
     points = cells.reshape(-1, 3)
     centers = _palette(points, weights.reshape(-1), color_count)
     labels = _nearest(points, centers).reshape(height, width)
+    if style == "smooth":
+        labels = _majority(labels, 1 + round(2 * smoothness), protect=cell_importance > 0.4)
     if clean:
         # 重要区域（人脸）里更不容易被当成杂色点
-        labels = _clean(labels, centers, (25 - 15 * detail) * (1 - 0.6 * cell_importance))
+        labels = _clean(labels, centers, threshold * (1 - 0.6 * cell_importance))
     return _renumber(labels, lab_to_rgb(centers))
 
 
@@ -386,6 +446,19 @@ def convert_file(path, **options):
     return convert(load_image(path), **options)
 
 
+def fidelity(original, picture):
+    """
+    还原度（0–100）：把原图（裁剪后、没有调整过）按面积平均缩成和填色图一样的格子数，
+    逐格比较颜色差别（ΔE）。平均差别是 0 时得 100 分，平均每差 1，扣 2.5 分。
+    亮度、饱和度调得越多，或者颜色越少，分数越低。
+    """
+    small = original.resize((picture.width, picture.height), Image.Resampling.BOX)
+    source = rgb_to_lab(np.asarray(small))
+    colors = np.array(picture.palette)[np.array(picture.numbers) - 1]
+    difference = np.sqrt(((source - rgb_to_lab(colors)) ** 2).sum(-1)).mean()
+    return int(round(min(100.0, max(0.0, 100 - 2.5 * difference))))
+
+
 def similar_color_pairs(palette, threshold=SIMILAR_DELTA_E):
     """调色板里有几对颜色差别小于 threshold（很难分辨）。"""
     lab = rgb_to_lab(palette)
@@ -396,7 +469,8 @@ def similar_color_pairs(palette, threshold=SIMILAR_DELTA_E):
 def recommend_color_count(image, grid_size=DEFAULT_GRID_SIZE, max_colors=36,
                           brightness=1.0, contrast=1.0, saturation=1.0, crop=None,
                           detail=DEFAULT_DETAIL, importance=None, subject=None,
-                          simplify_background=False):
+                          simplify_background=False, style=DEFAULT_STYLE,
+                          smoothness=DEFAULT_SMOOTHNESS):
     """
     推荐颜色数：既要足够还原这张图，又尽量不出现很接近的颜色。
 
@@ -408,7 +482,10 @@ def recommend_color_count(image, grid_size=DEFAULT_GRID_SIZE, max_colors=36,
     """
     image, importance, subject = _prepare(image, brightness, contrast, saturation, crop,
                                           importance, subject, simplify_background)
-    _w, _h, cells, weights, _i = _cells(image, grid_size, detail, importance, subject)
+    if style == "clear":
+        _w, _h, cells, weights, _i = _cells(image, grid_size, detail, importance, subject)
+    else:
+        _w, _h, cells, weights, _i = _cells_smooth(image, grid_size, importance, subject)
     points, weights = cells.reshape(-1, 3), weights.reshape(-1)
     rng = np.random.default_rng(0)
     if len(points) > 6000:
