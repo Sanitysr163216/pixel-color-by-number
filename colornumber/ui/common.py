@@ -67,15 +67,20 @@ def tr(key, **values):
 def pil_to_texture(image, nearest=True):
     """
     把 Pillow 图片变成 Kivy 能显示的贴图。
-    nearest=True（像素图）：放大时保持方块感；缩小时用多级纹理（mipmap）平滑，
-    不然格子比屏幕像素还小时会跳格，出现锯齿和闪烁。
+    nearest=True（像素图）：放大、缩小都不做平滑，每个格子保持一种均匀的颜色，
+    不会和旁边的格子混色。（显示时最好放大整数倍，格子大小才会完全一样。）
+    nearest=False（照片）：平滑缩放。
     """
     data = io.BytesIO()
     image.save(data, format="png")
     data.seek(0)
-    texture = CoreImage(data, ext="png", mipmap=True).texture
-    texture.min_filter = "linear_mipmap_linear"
-    texture.mag_filter = "nearest" if nearest else "linear"
+    if nearest:
+        texture = CoreImage(data, ext="png").texture
+        texture.min_filter = texture.mag_filter = "nearest"
+    else:
+        texture = CoreImage(data, ext="png", mipmap=True).texture
+        texture.min_filter = "linear_mipmap_linear"
+        texture.mag_filter = "linear"
     return texture
 
 

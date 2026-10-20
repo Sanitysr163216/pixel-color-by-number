@@ -49,6 +49,14 @@ def _clamp(value, low, high):
     return max(low, min(high, value))
 
 
+def _snap(scale):
+    """
+    每格 2 个像素以上时，把缩放比例取整：格子边缘正好落在屏幕像素上，
+    每个格子都是大小一样、颜色均匀的方块，不会有半个像素的颜色溢到旁边。
+    """
+    return float(round(scale)) if scale >= 2 else scale
+
+
 class PaintCanvas(StencilView):
     """可以缩放和拖动的填色画布。"""
 
@@ -77,6 +85,9 @@ class PaintCanvas(StencilView):
         self._highlighted = None
         self._hint_idx = None
         self._fit_scale = 1.0
+        # 缩放和位置先按"精确值"记录（连续变化，捏合才顺滑），显示时再对齐到整像素
+        self._exact_scale = 1.0
+        self._exact_offset = [0.0, 0.0]
         self._at_fit = True          # 现在是不是"显示全图"的状态（改窗口大小时用）
         self._last_size = None
         self._built = None           # 数字层是按什么视图生成的
@@ -132,10 +143,14 @@ class PaintCanvas(StencilView):
 
     @staticmethod
     def _make_texture(width, height):
-        # 放大时保持方块感；缩小时（每格不到 1 个屏幕像素）用多级纹理平滑，避免跳格和闪烁
-        texture = Texture.create(size=(width, height), colorfmt="rgba", mipmap=True)
+        """
+        每格 1 个像素的贴图。放大时用"最近邻"：每个格子都是一种颜色的方块，不会糊、不会溢色。
+        （不能用多级纹理 mipmap：开了以后 Kivy 放大时会改用平滑插值，格子边缘会糊成渐变。）
+        缩小到每格不到 1 个像素时用简单的平滑，避免闪烁。
+        """
+        texture = Texture.create(size=(width, height), colorfmt="rgba")
         texture.mag_filter = "nearest"
-        texture.min_filter = "linear_mipmap_linear"
+        texture.min_filter = "linear"
         return texture
 
     # ------------------------------------------------------------------
@@ -211,8 +226,8 @@ class PaintCanvas(StencilView):
             else:
                 # 窗口变大或变小时，保持画面中心不变
                 old_width, old_height = self._last_size
-                self._set_offset(self.offset[0] + (self.width - old_width) / 2,
-                                 self.offset[1] + (self.height - old_height) / 2)
+                self._set_offset(self._exact_offset[0] + (self.width - old_width) / 2,
+                                 self._exact_offset[1] + (self.height - old_height) / 2)
         self._last_size = tuple(self.size)
         self._update_view()
 
@@ -221,9 +236,12 @@ class PaintCanvas(StencilView):
         if self.game is None or self.width < 10 or self.height < 10:
             return
         self._fit_scale = min(self.width / self.game.width, self.height / self.game.height) * 0.94
-        self.scale = self._fit_scale
-        self.offset = [(self.width - self.game.width * self.scale) / 2,
-                       (self.height - self.game.height * self.scale) / 2]
+        scale = math.floor(self._fit_scale) if self._fit_scale >= 2 else self._fit_scale
+        self._exact_scale = scale
+        self.scale = scale
+        self._exact_offset = [(self.width - self.game.width * scale) / 2,
+                              (self.height - self.game.height * scale) / 2]
+        self.offset = [round(value) for value in self._exact_offset]
         self._at_fit = True
 
     def _min_scale(self):
@@ -233,8 +251,8 @@ class PaintCanvas(StencilView):
         """以屏幕上的 (x, y) 为中心缩放。"""
         if self.game is None:
             return
-        new_scale = _clamp(self.scale * factor, self._min_scale(), MAX_SCALE)
-        self._set_view(new_scale, x, y, x, y, self.scale, self.offset)
+        self._exact_scale = _clamp(self._exact_scale * factor, self._min_scale(), MAX_SCALE)
+        self._set_view(_snap(self._exact_scale), x, y, x, y, self.scale, self.offset)
 
     def _set_view(self, new_scale, anchor_x, anchor_y, target_x, target_y, old_scale, old_offset):
         """缩放后，让原来在 anchor 位置下的那一点移到 target 位置。"""
@@ -251,12 +269,13 @@ class PaintCanvas(StencilView):
         height = self.game.height * self.scale
         offset_x = _clamp(offset_x, margin - width, self.width - margin)
         offset_y = _clamp(offset_y, margin - height, self.height - margin)
-        self.offset = [offset_x, offset_y]
+        self._exact_offset = [offset_x, offset_y]
+        self.offset = [round(offset_x), round(offset_y)]      # 对齐到整像素
         self._at_fit = False
 
     def pan(self, dx, dy):
         if self.game is not None:
-            self._set_offset(self.offset[0] + dx, self.offset[1] + dy)
+            self._set_offset(self._exact_offset[0] + dx, self._exact_offset[1] + dy)
 
     def gesture_zoom(self, factor):
         """触控板捏合：以鼠标位置为中心缩放。"""
@@ -478,7 +497,8 @@ class PaintCanvas(StencilView):
 
     def show_hint(self, idx):
         row, col = divmod(idx, self.game.width)
-        self.scale = min(max(self.scale, 28.0), MAX_SCALE)
+        self._exact_scale = _snap(min(max(self.scale, 28.0), MAX_SCALE))
+        self.scale = self._exact_scale
         center_x = (col + 0.5) * self.scale
         center_y = (self.game.height - 1 - row + 0.5) * self.scale
         self._set_offset(self.width / 2 - center_x, self.height / 2 - center_y)
@@ -658,8 +678,8 @@ class PaintCanvas(StencilView):
         distance = max(1.0, math.dist(first.pos, second.pos))
         center = ((first.x + second.x) / 2, (first.y + second.y) / 2)
         start = self._pinch
-        new_scale = _clamp(start["scale"] * distance / start["distance"], self._min_scale(), MAX_SCALE)
-        self._set_view(new_scale, *start["center"], *center, start["scale"], start["offset"])
+        self._exact_scale = _clamp(start["scale"] * distance / start["distance"], self._min_scale(), MAX_SCALE)
+        self._set_view(_snap(self._exact_scale), *start["center"], *center, start["scale"], start["offset"])
 
     # ------------------------------------------------------------------
     # 回放填色过程（完成动画）

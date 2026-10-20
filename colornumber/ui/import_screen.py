@@ -3,6 +3,7 @@
 会推荐一个颜色数，提醒很接近的颜色；在 macOS 上还可以用 AI 识别人脸和主体。
 """
 
+import math
 import subprocess
 import sys
 import threading
@@ -408,10 +409,17 @@ class CompareView(Widget):
         self._redraw()
 
     def _rect(self):
+        """
+        填色图显示的位置和大小。贴图是每格 1 个像素，放大整数倍显示，
+        并对齐到整像素，这样每个格子都是同样大小、颜色均匀的方块。
+        """
         width, height = self.pixel_texture.size
         scale = min(self.width / width, self.height / height)
-        shown_w, shown_h = width * scale, height * scale
-        return self.x + (self.width - shown_w) / 2, self.y + (self.height - shown_h) / 2, shown_w, shown_h
+        if scale >= 1:
+            scale = math.floor(scale)
+        shown_w, shown_h = round(width * scale), round(height * scale)
+        return (round(self.x + (self.width - shown_w) / 2), round(self.y + (self.height - shown_h) / 2),
+                shown_w, shown_h)
 
     def _label(self, key):
         """"原图""填色图"这样的小标签的贴图。"""
@@ -432,16 +440,17 @@ class CompareView(Widget):
             if not self.compare or self.original_texture is None:
                 Rectangle(texture=self.pixel_texture, pos=(x, y), size=(w, h))
                 return
-            split_x = x + w * self.split
             ow, oh = self.original_texture.size
             pw, ph = self.pixel_texture.size
-            if self.split > 0.001:
-                Rectangle(texture=self.original_texture.get_region(0, 0, max(1, int(ow * self.split)), oh),
-                          pos=(x, y), size=(w * self.split, h))
-            if self.split < 0.999:
-                left = int(pw * self.split)
-                Rectangle(texture=self.pixel_texture.get_region(left, 0, max(1, pw - left), ph),
-                          pos=(split_x, y), size=(w - w * self.split, h))
+            left = round(pw * self.split)               # 分隔线放在格子边界上，不把格子切成两半
+            fraction = left / pw
+            split_x = x + round(w * fraction)
+            if left > 0:
+                Rectangle(texture=self.original_texture.get_region(0, 0, max(1, round(ow * fraction)), oh),
+                          pos=(x, y), size=(split_x - x, h))
+            if left < pw:
+                Rectangle(texture=self.pixel_texture.get_region(left, 0, pw - left, ph),
+                          pos=(split_x, y), size=(x + w - split_x, h))
             # 分隔线和拖动把手
             Color(1, 1, 1, 1)
             Line(points=[split_x, y, split_x, y + h], width=dp(1.5))
@@ -661,8 +670,7 @@ class ImportScreen(Screen):
         def work():
             try:
                 picture = converter.convert(image, **options)
-                cell = max(1, 1024 // max(picture.width, picture.height))
-                rendered = render_state(picture, picture.flat_numbers(), cell)
+                rendered = render_state(picture, picture.flat_numbers(), 1)   # 每格 1 个像素，显示时整数倍放大
                 similar = converter.similar_color_pairs(picture.palette)
                 original = image.crop(options["crop"])
                 fidelity = converter.fidelity(original, picture)
