@@ -25,31 +25,70 @@ The interface is in English by default; Chinese is available under **Settings �
 - **Sound effects** (synthesized): fill "pops" climb a pentatonic scale as you drag; a softer sound for wrong colors
 - **Settings**: language, what happens on a wrong color (block it, or paint it and mark it wrong), larger grid and color limits, sound and music volume
 
-## Install and run
+## Download and play (macOS)
 
-Install [Miniforge](https://github.com/conda-forge/miniforge) (conda) first, then:
+The easiest way: download the ready-made app, no Python needed.
+
+1. Open the [latest release](https://github.com/Sanitysr163216/pixel-color-by-number/releases/latest)
+   and download `Color-Number-<version>-macOS-arm64.zip`.
+   It runs on Macs with Apple silicon (M1 or newer) and macOS 12 or later.
+2. Double-click the zip to unpack it, then drag **Color Number.app** into your **Applications** folder.
+3. Open it. The first time, macOS says it cannot verify the developer, because the app is not signed
+   with a paid Apple Developer ID. To allow it:
+   - Click **Done** (or **OK**) in that message.
+   - Open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to
+     "Color Number", then confirm with your password or Touch ID.
+   - From then on it opens normally.
+
+The downloadable app can export PNG and GIF. MP4 export needs [ffmpeg](https://ffmpeg.org);
+if you install it with Homebrew (`brew install ffmpeg`), the MP4 button appears automatically.
+
+On an Intel Mac, Windows or Linux, run from source (below).
+
+## Run from source
+
+For developers, or on computers without a ready-made app. You only do steps 1–4 once.
+
+1. **Install Miniforge** (a small Python distribution) from
+   [github.com/conda-forge/miniforge](https://github.com/conda-forge/miniforge#install).
+   Close and reopen your terminal afterwards.
+2. **Get the code**: on this page click the green **Code** button → **Download ZIP** and unzip it,
+   or use git:
+
+   ```bash
+   git clone https://github.com/Sanitysr163216/pixel-color-by-number.git
+   ```
+
+3. **Open a terminal in the project folder.** Type `cd ` (with a space), drag the unzipped folder
+   into the terminal window and press Return.
+4. **Create the environment** (downloads about 1 GB, takes a few minutes):
+
+   ```bash
+   conda env create --file environment.yml
+   ```
+
+5. **Start the game**:
+
+   ```bash
+   conda activate color-number
+   python main.py
+   ```
+
+Next time, only step 5 is needed. On macOS you can also double-click the
+**Color Number.app** inside the project folder: it is a small launcher that starts `main.py` with the
+`color-number` environment (keep it inside the project folder). After pulling new changes, run
+`conda env update --file environment.yml`.
+
+### Build the app yourself (macOS)
 
 ```bash
-conda env create --file environment.yml
 conda activate color-number
-python main.py
+conda install -c conda-forge pyinstaller     # only needed once
+packaging/build_macos.sh 1.0.0
 ```
 
-After pulling new changes, update the environment with:
-
-```bash
-conda env update --file environment.yml
-```
-
-### Double-click launcher (macOS)
-
-Once the environment exists, double-click **Color Number.app** in the project folder.
-It is only a launcher that runs `main.py` from the same folder, so keep it inside the project folder
-(drag it to the Dock to create a shortcut). It looks for the `color-number` environment in
-`~/miniforge3`, `~/miniconda3`, `~/anaconda3` and other common locations.
-
-The game is developed and tested on macOS. Kivy also runs on Windows and Linux, but AI assist,
-trackpad gestures and the native file picker are macOS-only there.
+The app and a zip for GitHub Releases appear in `dist/`. The build uses PyInstaller and
+does not include ffmpeg.
 
 ## Controls
 
@@ -93,6 +132,7 @@ colornumber/
     i18n.py              English and Chinese interface text
   assets/music/          featured music (OGG) and credits.json
   ui/                    Kivy interface: screens, zoomable canvas, dialogs, sound, trackpad gestures
+packaging/               PyInstaller build script for the macOS app
 preview.py               preview a photo conversion from the command line
 tests/                   automated tests (run `pytest`)
 exercises/               Python exercises that go with the project (in Chinese)

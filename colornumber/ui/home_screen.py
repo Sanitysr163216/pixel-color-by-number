@@ -21,7 +21,7 @@ from colornumber.core import library
 from colornumber.core.render import render_state
 from colornumber.ui.common import (TEXT, TEXT_LIGHT, Chip, Dialog, RoundButton,  # noqa: F401
                                    confirm, pil_to_texture, tr)
-from colornumber.ui.exporting import export_game
+from colornumber.ui.exporting import export_game, export_kinds
 
 CARD_WIDTH = 200
 
@@ -241,7 +241,7 @@ class HomeScreen(Screen):
         name = app.project_name(meta)
         buttons = [(tr("continue"), lambda: app.open_project(meta["id"]), "primary")]
         if meta["completed"]:
-            for kind in ("png", "gif", "mp4"):
+            for kind in export_kinds():
                 buttons.append((tr(f"export_{kind}"),
                                 lambda k=kind: self._export(meta, k), "normal", False))
         buttons += [

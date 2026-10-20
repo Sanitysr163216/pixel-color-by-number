@@ -24,29 +24,64 @@
 - **音效**（代码合成）：填色时"啵"的音效会按五声音阶往上走，填错有单独的提示音
 - **设置**：中英文切换、填错时的处理方式（不让填，或填上但标为错误）、更大的格子和颜色上限、音效和音乐的开关与音量
 
-## 安装和运行
+## 下载就能玩（macOS）
 
-需要先安装 [Miniforge](https://github.com/conda-forge/miniforge)（conda）。
+最简单的方式：下载打包好的 App，不需要安装 Python。
+
+1. 打开[最新发布页面](https://github.com/Sanitysr163216/pixel-color-by-number/releases/latest)，
+   下载 `Color-Number-<版本>-macOS-arm64.zip`。
+   适用于 Apple 芯片（M1 及以后）的 Mac，需要 macOS 12 或更新版本。
+2. 双击 zip 解压，把 **Color Number.app** 拖进"应用程序"文件夹。
+3. 打开它。第一次打开时，macOS 会提示"无法验证开发者"，因为这个 App 没有用付费的苹果开发者证书签名。允许的方法：
+   - 在提示框里点"完成"（或"好"）。
+   - 打开 **系统设置 → 隐私与安全性**，往下找到"Color Number"，点 **仍要打开**，再用密码或触控 ID 确认。
+   - 以后就能正常打开了。
+
+下载版可以导出 PNG 和 GIF。导出 MP4 需要 [ffmpeg](https://ffmpeg.org)：
+用 Homebrew 安装（`brew install ffmpeg`）之后，MP4 按钮会自动出现。
+
+Intel 芯片的 Mac、Windows、Linux 请用下面"从源码运行"的方式。
+
+## 从源码运行
+
+适合想看代码、改代码的人，或者没有现成 App 的电脑。第 1–4 步只需要做一次。
+
+1. **安装 Miniforge**（一个小巧的 Python 发行版）：
+   [github.com/conda-forge/miniforge](https://github.com/conda-forge/miniforge#install)。
+   装好后关掉终端，再重新打开。
+2. **下载代码**：在本页点绿色的 **Code** 按钮 → **Download ZIP** 并解压；或者用 git：
+
+   ```bash
+   git clone https://github.com/Sanitysr163216/pixel-color-by-number.git
+   ```
+
+3. **在终端里进入项目文件夹**：输入 `cd `（后面带一个空格），把解压出来的文件夹拖进终端窗口，按回车。
+4. **创建环境**（要下载约 1 GB，需要几分钟）：
+
+   ```bash
+   conda env create --file environment.yml
+   ```
+
+5. **启动游戏**：
+
+   ```bash
+   conda activate color-number
+   python main.py
+   ```
+
+以后每次只需要第 5 步。在 macOS 上也可以直接双击项目文件夹里的 **Color Number.app**：
+它是一个小启动器，会用 `color-number` 环境运行 `main.py`（请把它留在项目文件夹里，可以拖到程序坞做快捷方式）。
+更新代码后，运行 `conda env update --file environment.yml` 同步环境。
+
+### 自己打包 App（macOS）
 
 ```bash
-conda env create --file environment.yml
 conda activate color-number
-python main.py
+conda install -c conda-forge pyinstaller     # 只需要装一次
+packaging/build_macos.sh 1.0.0
 ```
 
-### 双击启动（macOS）
-
-建好环境之后，在 Finder 里双击项目文件夹中的 **Color Number.app** 就能打开游戏。
-
-- 这个 App 只是一个启动器，它会去运行同一个文件夹里的 `main.py`，所以**不要把它移出项目文件夹**。
-- 想放进程序坞，可以把它拖到程序坞里（这样只会放一个快捷方式，App 本身还留在原处）。
-- 启动器会在 `~/miniforge3`、`~/miniconda3`、`~/anaconda3` 等常见位置寻找 `color-number` 环境。
-
-以后更新了 `environment.yml`，用这条命令同步：
-
-```bash
-conda env update --file environment.yml
-```
+打包好的 App 和用来上传到 GitHub Releases 的 zip 会出现在 `dist/` 文件夹。打包使用 PyInstaller，不附带 ffmpeg。
 
 ## 操作方法
 
@@ -99,6 +134,7 @@ colornumber/
     common.py            按钮、弹窗、字体等公共部分
     mac_gestures.py      Mac 触控板手势（捏合缩放、双指滑动）
     sound.py / confetti.py / exporting.py
+packaging/               打包 macOS App 的脚本（PyInstaller）
 preview.py               不打开游戏，只在命令行预览照片转换的效果
 tests/                   自动测试（运行 pytest）
 exercises/               Python 练习（见下文）

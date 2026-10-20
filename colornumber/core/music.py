@@ -35,12 +35,9 @@ def featured_tracks():
 
 
 def _ffmpeg():
-    """找到 ffmpeg：优先用 imageio-ffmpeg 自带的，没有就找系统里的。"""
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        return shutil.which("ffmpeg")
+    """找到 ffmpeg（见 export.ffmpeg_path），找不到返回 None。"""
+    from colornumber.core.export import ffmpeg_path
+    return ffmpeg_path()
 
 
 class MusicLibrary:
@@ -75,20 +72,31 @@ class MusicLibrary:
             target = self.root / f"{track_id}{suffix}"
             shutil.copyfile(source, target)
         else:
-            ffmpeg = _ffmpeg()
-            if ffmpeg is None:
-                raise ValueError(f"unsupported format: {suffix}")
-            target = self.root / f"{track_id}.ogg"
-            result = subprocess.run(
-                [ffmpeg, "-y", "-loglevel", "error", "-i", str(source), "-vn",
-                 "-c:a", "libvorbis", "-q:a", "5", str(target)],
-                capture_output=True, text=True)
-            if result.returncode != 0 or not target.exists():
-                target.unlink(missing_ok=True)
-                raise ValueError(result.stderr.strip() or f"cannot convert {suffix}")
+            target = self._convert(source, track_id)
         entry = {"id": track_id, "name": source.stem, "file": str(target)}
         self._save(self.tracks() + [entry])
         return entry
+
+    def _convert(self, source, track_id):
+        """
+        把游戏不能直接播放的格式转换一下：有 ffmpeg 就转成 OGG；
+        没有 ffmpeg 的 Mac（比如打包好的 App）用系统自带的 afconvert 转成 WAV。
+        """
+        ffmpeg = _ffmpeg()
+        if ffmpeg is not None:
+            target = self.root / f"{track_id}.ogg"
+            command = [ffmpeg, "-y", "-loglevel", "error", "-i", str(source), "-vn",
+                       "-c:a", "libvorbis", "-q:a", "5", str(target)]
+        elif shutil.which("afconvert"):
+            target = self.root / f"{track_id}.wav"
+            command = ["afconvert", "-f", "WAVE", "-d", "LEI16@44100", str(source), str(target)]
+        else:
+            raise ValueError(f"unsupported format: {source.suffix}")
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0 or not target.exists():
+            target.unlink(missing_ok=True)
+            raise ValueError(result.stderr.strip() or f"cannot convert {source.suffix}")
+        return target
 
     def remove(self, track_id):
         entries = self.tracks()

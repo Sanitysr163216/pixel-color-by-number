@@ -4,6 +4,9 @@
 GIF 和 MP4 是"延时动画"：按填色顺序回放整个过程。
 """
 
+import os
+import shutil
+
 from PIL import Image
 
 from colornumber.core.render import cell_pixels_for, render_state
@@ -51,6 +54,29 @@ def _even_size(image):
     padded = Image.new("RGB", (width + width % 2, height + height % 2), "white")
     padded.paste(image, (0, 0))
     return padded
+
+
+def ffmpeg_path():
+    """
+    找到 ffmpeg，找不到返回 None。打包好的 App 里没有附带 ffmpeg，
+    但玩家可能自己用 Homebrew 装了；从 Finder 打开的 App 搜不到 Homebrew 的文件夹，
+    所以再看看常见的安装位置，找到了就告诉 imageio。
+    """
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        pass
+    for candidate in (shutil.which("ffmpeg"), "/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"):
+        if candidate and os.path.exists(candidate):
+            os.environ["IMAGEIO_FFMPEG_EXE"] = candidate
+            return candidate
+    return None
+
+
+def mp4_available():
+    """能不能导出 MP4：需要 imageio 和 ffmpeg。"""
+    return ffmpeg_path() is not None
 
 
 def export_mp4(game, path):

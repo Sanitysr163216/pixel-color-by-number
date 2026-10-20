@@ -35,6 +35,11 @@ def show_in_finder(path):
         subprocess.run(["explorer", "/select,", str(path)], check=False)
 
 
+def export_kinds():
+    """能导出的格式。没有 ffmpeg 时不显示 MP4。"""
+    return ("png", "gif", "mp4") if export.mp4_available() else ("png", "gif")
+
+
 def export_game(game, name, kind):
     """导出 game，kind 是 "png"、"gif" 或 "mp4"。"""
     EXPORT_FOLDER.mkdir(parents=True, exist_ok=True)

@@ -17,7 +17,7 @@ from kivy.uix.widget import Widget
 from colornumber.ui.common import (ACCENT, Chip, Dialog, LongPressButton, RoundButton,  # noqa: F401
                                    confirm, contrast_text_color, tr)
 from colornumber.ui.confetti import Confetti  # noqa: F401  （KV 里用到）
-from colornumber.ui.exporting import export_game
+from colornumber.ui.exporting import export_game, export_kinds
 from colornumber.ui.paint_canvas import PaintCanvas  # noqa: F401  （KV 里用到）
 
 AUTOSAVE_DELAY = 1.5   # 停笔 1.5 秒后自动保存
@@ -473,7 +473,7 @@ class GameScreen(Screen):
             return
         game, name = self.game, self.app.project_name(self.meta)
         buttons = [(tr(f"export_{kind}"), lambda k=kind: export_game(game, name, k), "primary", False)
-                   for kind in ("png", "gif", "mp4")]
+                   for kind in export_kinds()]
         buttons += [
             (tr("replay"), self.replay, "normal"),
             (tr("back_to_gallery"), self.go_back, "normal"),
