@@ -140,4 +140,7 @@ pytest
 
 ## 许可证
 
-还没有决定。
+代码使用 [MIT 许可证](LICENSE)：任何人都可以免费使用、修改和分发，只需要保留版权声明。
+`colornumber/assets/music/` 里的精选音乐是 CC0（公有领域），作者见上文。
+
+*Code: MIT License. Featured music in `colornumber/assets/music/`: CC0, see credits above.*
