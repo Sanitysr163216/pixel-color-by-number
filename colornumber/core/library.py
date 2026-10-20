@@ -13,30 +13,71 @@ from colornumber.core.picture import Picture
 # 字符画
 # ---------------------------------------------------------------------------
 
+def _mushroom_art():
+    """
+    一大一小两朵牛肝菌：用半个椭圆画菌盖、长方形画菌柄，再自动描深色边。
+    （刻意没有画红帽白点和脸，和游戏里常见的卡通蘑菇区分开。）
+    """
+    width, height = 22, 18
+
+    def big_cap(row, col):
+        return row <= 7 and ((col - 9.5) / 7.6) ** 2 + ((row - 7.5) / 6.4) ** 2 <= 1
+
+    def big_stem_right(row):
+        return 12 + (1 if row >= 13 else 0)          # 菌柄下面稍微粗一点
+
+    def big_stem(row, col):
+        return 8 <= row <= 15 and 7 - (1 if row >= 13 else 0) <= col <= big_stem_right(row)
+
+    def small_cap(row, col):
+        return 9 <= row <= 12 and ((col - 17.5) / 3.9) ** 2 + ((row - 12.5) / 3.4) ** 2 <= 1
+
+    def small_stem(row, col):
+        return 13 <= row <= 15 and 16 <= col <= 19
+
+    def inside(row, col):
+        return any(shape(row, col) for shape in (big_cap, big_stem, small_cap, small_stem))
+
+    rows = []
+    for row in range(height):
+        line = ""
+        for col in range(width):
+            if row >= 16:
+                char = "G" if (col + row) % 3 == 0 else "g"
+            elif inside(row, col):
+                edge = any(not inside(row + dr, col + dc) and row + dr < 16
+                           for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)))
+                if edge:
+                    char = "k"
+                elif big_cap(row, col):
+                    if row == 7:
+                        char = "u"                                   # 菌盖下面一圈
+                    elif (col - 6) ** 2 + (row - 3.5) ** 2 < 6:
+                        char = "h"                                   # 高光
+                    else:
+                        char = "b"
+                elif small_cap(row, col):
+                    char = "U" if row == 12 else ("O" if (col - 16.5) ** 2 + (row - 10.8) ** 2 < 2 else "o")
+                elif big_stem(row, col):
+                    char = "S" if col == big_stem_right(row) - 1 else "s"   # 右边一列阴影
+                else:
+                    char = "S" if col == 18 else "s"
+            elif (row, col) in ((15, 2), (15, 3), (14, 2), (15, 21), (14, 21)):
+                char = "g"                                           # 几根小草
+            else:
+                char = "."
+            line += char
+        rows.append(line)
+    return rows
+
+
 MUSHROOM = {
     "colors": {
-        ".": (250, 240, 220), "k": (70, 45, 45), "r": (220, 55, 55),
-        "d": (165, 35, 45), "w": (255, 255, 255), "s": (245, 225, 185),
-        "g": (120, 180, 90), "G": (80, 140, 70),
+        ".": (222, 238, 226), "k": (70, 45, 35), "b": (150, 95, 60), "h": (190, 132, 86),
+        "u": (236, 214, 170), "o": (232, 140, 62), "O": (247, 185, 110), "U": (240, 205, 150),
+        "s": (244, 230, 200), "S": (214, 194, 158), "g": (112, 176, 96), "G": (82, 140, 76),
     },
-    "art": [
-        "................",
-        ".....kkkkkk.....",
-        "...kkrrrrwwkk...",
-        "..krrrrrrwwwrk..",
-        ".krwwrrrrrwwrrk.",
-        ".krwwwrrrrrrrrk.",
-        "krrwwrrrrrrwwrrk",
-        "krrrrrrrrrwwwwrk",
-        "kdrrrwwrrrwwwwdk",
-        "kddddwwddddddddk",
-        ".kkkkkkkkkkkkkk.",
-        "....kssssssk....",
-        "....kskssksk....",
-        "....kssssssk....",
-        "..g.kssssssk.g..",
-        "GgGgGkkkkkkGgGgG",
-    ],
+    "art": _mushroom_art(),
 }
 
 CAT = {
