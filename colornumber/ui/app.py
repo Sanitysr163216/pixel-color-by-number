@@ -24,7 +24,7 @@ from colornumber.ui.sound import SoundManager
 
 class ColorNumberApp(App):
     title = "Color Number"
-    lang = StringProperty("zh")                  # 当前语言，界面文字会跟着它变
+    lang = StringProperty("en")                  # 当前语言，界面文字会跟着它变
     settings_grid_limit = NumericProperty(128)   # 导入时格子数滑块的上限
     settings_color_limit = NumericProperty(36)   # 导入时颜色数滑块的上限
 

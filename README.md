@@ -1,30 +1,33 @@
-# Color Number 数字填色
+# Color Number
 
-把照片变成像素格子，再按编号一格一格填色的小游戏。用 Python 和 Kivy 编写。
+**English** | [中文](README.zh-CN.md)
 
-*A pixel-art color-by-number game written in Python with Kivy. Import any photo, turn it into a numbered grid, and paint it cell by cell.*
+A pixel-art color-by-number game for the desktop, written in Python with [Kivy](https://kivy.org).
+Turn any photo into a numbered grid of cells, then paint it cell by cell.
 
-## 功能
+The interface is in English by default; Chinese is available under **Settings → Language**.
 
-- **内置图库**：蘑菇、橘猫、草莓、冰淇淋、小房子、仙人掌、小丑鱼、湖边日落
-- **导入照片**（JPG / PNG / iPhone 的 HEIC 等）：裁剪，调整亮度、对比度、饱和度，自由选择格子数和颜色数，实时预览，一键恢复默认
-  - **三种风格**：**平滑**（默认，颜色过渡柔和，边界圆润没有尖角）、**清晰**（锐化边缘，细节最多）、**经典**（第一版的算法）
-  - **对比原图**：拖动分隔线左右对比原图和填色图，并显示"还原度"，看出调整和转换让图片变了多少
-  - 都在 Lab 颜色空间里选色（颜色更好区分），眼白、嘴唇、高光这类小而显眼的颜色会单独留出名额
-  - **推荐颜色数**：为每张图算出一个"能还原、颜色又好区分"的颜色数，一键使用；颜色太接近时会提醒
-  - **AI 识别**（macOS）：用系统自带的 Apple Vision 离线识别人脸、五官和主体，五官保留更多细节，还可以一键虚化背景
-- **填色**：点击或拖动上色，笔刷可选 1×1、3×3、5×5；滚轮或触控板捏合缩放，触控板双指滑动移动画布；远看是灰色轮廓，放大后渐变成白底和编号
-- **辅助工具**（都可以无限使用）：高亮当前编号、魔棒（填满相连的同编号区域）、油漆桶（填满整张图的同一编号；**长按**一键填完整张图）、提示（自动移动到还没填的格子并闪烁）、吸管（Option + 点击选中这一格的颜色）、撤销（步数不限，关闭程序后仍然保留）和重做
-- **颜色栏**：显示每种颜色的剩余进度，填完打勾，并自动跳到下一种颜色
-- **完成之后**：彩带庆祝和填色过程快速回放；可以导出 PNG 图片、GIF 动图、MP4 视频
-- **作品集**：按"进行中/已完成"筛选，可以继续、重命名、重新开始、导出、删除；进度自动保存
-- **背景音乐**：8 首网上精选的轻松音乐（CC0 授权，见下文）+ 5 首代码合成的音乐，随机播放，可以切下一首；可以**导入自己的音乐**（MP3、OGG、FLAC、WAV、M4A 等），并选择只放某一类
-- **音效**（代码合成）：填色时"啵"的音效会按五声音阶往上走，填错有单独的提示音
-- **设置**：中英文切换、填错时的处理方式（不让填，或填上但标为错误）、更大的格子和颜色上限、音效和音乐的开关与音量
+## Features
 
-## 安装和运行
+- **Built-in library**: mushrooms, ginger cat, strawberry, ice cream, little house, cactus, clownfish and a lake sunset
+- **Import your own photos** (JPG, PNG, iPhone HEIC, …): crop, adjust brightness/contrast/saturation, choose the grid size and number of colors, live preview, one-click reset to defaults
+  - **Three styles**: **Smooth** (default: soft color transitions, rounded shapes without jagged corners), **Sharp** (sharpened edges, most detail) and **Classic** (the first version's algorithm)
+  - **Compare with the original**: drag a divider between the original photo and the pixel art, with a "similar to the original" score
+  - Colors are chosen in the perceptual Lab color space, and small but striking colors (eye whites, lips, highlights) get their own palette slots
+  - **Recommended color count** for each picture (faithful, yet with colors that are easy to tell apart), plus a warning when colors look alike
+  - **AI assist** (macOS): Apple's on-device Vision framework finds faces, facial features and the main subject, keeps more detail in faces and can blur the background
+- **Painting**: click or drag to paint, brush sizes 1×1 / 3×3 / 5×5; zoom with the mouse wheel, trackpad pinch or Cmd+scroll; pan with two fingers on the trackpad. Zoomed out you see a grey outline of the picture; zoom in and it fades to white cells with numbers
+- **Helpers** (unlimited): highlight the current number, magic wand (fills a connected area), bucket (fills every cell of the current number; **hold** it to fill the whole picture), hint (jumps to an unfilled cell), eyedropper (Option-click), unlimited undo that survives restarts, and redo
+- **Palette**: remaining progress per color, a check mark when a color is done, auto-advance to the next color
+- **When finished**: confetti and a fast replay of your painting; export as PNG, animated GIF or MP4 video
+- **Gallery**: filter in-progress / finished pictures; continue, rename, restart, export or delete; progress is saved automatically
+- **Music**: 8 relaxing CC0 tracks (see credits below) plus 5 synthesized tracks, shuffled; import your own music (MP3, OGG, FLAC, WAV, M4A, …) and choose which sources to play
+- **Sound effects** (synthesized): fill "pops" climb a pentatonic scale as you drag; a softer sound for wrong colors
+- **Settings**: language, what happens on a wrong color (block it, or paint it and mark it wrong), larger grid and color limits, sound and music volume
 
-需要先安装 [Miniforge](https://github.com/conda-forge/miniforge)（conda）。
+## Install and run
+
+Install [Miniforge](https://github.com/conda-forge/miniforge) (conda) first, then:
 
 ```bash
 conda env create --file environment.yml
@@ -32,115 +35,95 @@ conda activate color-number
 python main.py
 ```
 
-### 双击启动（macOS）
-
-建好环境之后，在 Finder 里双击项目文件夹中的 **Color Number.app** 就能打开游戏。
-
-- 这个 App 只是一个启动器，它会去运行同一个文件夹里的 `main.py`，所以**不要把它移出项目文件夹**。
-- 想放进程序坞，可以把它拖到程序坞里（这样只会放一个快捷方式，App 本身还留在原处）。
-- 启动器会在 `~/miniforge3`、`~/miniconda3`、`~/anaconda3` 等常见位置寻找 `color-number` 环境。
-
-以后更新了 `environment.yml`，用这条命令同步：
+After pulling new changes, update the environment with:
 
 ```bash
 conda env update --file environment.yml
 ```
 
-## 操作方法
+### Double-click launcher (macOS)
 
-| 操作 | 鼠标 / 键盘 |
+Once the environment exists, double-click **Color Number.app** in the project folder.
+It is only a launcher that runs `main.py` from the same folder, so keep it inside the project folder
+(drag it to the Dock to create a shortcut). It looks for the `color-number` environment in
+`~/miniforge3`, `~/miniconda3`, `~/anaconda3` and other common locations.
+
+The game is developed and tested on macOS. Kivy also runs on Windows and Linux, but AI assist,
+trackpad gestures and the native file picker are macOS-only there.
+
+## Controls
+
+| Action | Mouse / keyboard |
 |---|---|
-| 填色 | 左键点击或拖动 |
-| 缩放 | 触控板捏合、滚轮，或按 `+` / `-` |
-| 移动画布 | 触控板双指滑动、右键拖动、按住空格再拖动、"移动"工具，或方向键 |
-| 吸管（选中某格的颜色） | 按住 `Option`（Windows 上是 `Alt`）点击格子 |
-| 撤销 / 重做 | `Cmd+Z` / `Cmd+Shift+Z`（Windows 上是 `Ctrl+Z` / `Ctrl+Y`） |
-| 笔刷大小 | `[` 变小，`]` 变大 |
-| 一键填完整张图 | 长按"油漆桶"按钮 |
-| 提示 | `H` |
-| 切换工具 | `B` 画笔、`W` 魔棒、`M` 移动 |
-| 显示全图 | `0` |
+| Paint | Left click or drag |
+| Zoom | Trackpad pinch, mouse wheel, Cmd/Ctrl + scroll, the + / − buttons, or `+` / `-` |
+| Pan | Two-finger trackpad swipe, right-drag, hold Space and drag, the Move tool, or arrow keys |
+| Eyedropper (select a cell's color) | Option-click (Alt-click on Windows) |
+| Undo / redo | `Cmd+Z` / `Cmd+Shift+Z` (`Ctrl+Z` / `Ctrl+Y` on Windows) |
+| Brush size | `[` smaller, `]` larger |
+| Fill the whole picture | Hold the Bucket button |
+| Hint | `H` |
+| Tools | `B` brush, `W` wand, `M` move |
+| Fit to window | `0` |
 
-触屏设备上：一根手指填色，两根手指缩放和移动。
+On touch screens: one finger paints, two fingers zoom and pan.
 
-## 文件存放位置
+## Where files are stored
 
-- 作品存档和设置：`~/Library/Application Support/colornumber/`（macOS）
-- 导出的图片和视频：`~/Pictures/Color Number/`
+- Saved pictures and settings: `~/Library/Application Support/colornumber/` (macOS)
+- Exports: `~/Pictures/Color Number/`
 
-## 项目结构
+## Project layout
 
 ```
-main.py                  程序入口
+main.py                  entry point
 colornumber/
-  core/                  纯 Python 的游戏逻辑，不引用 Kivy（以后移植 iPhone 时可以直接复用）
-    picture.py           一张填色图的数据（调色板 + 编号格子）
-    converter.py         照片 → 填色图（Lab 选色、锐化、推荐颜色数）
-    vision.py            AI 识别人脸、五官和主体（Apple Vision，只在 macOS 上）
-    music.py             背景音乐曲库：精选音乐和"我的音乐"（导入、转换格式、删除）
-  assets/music/          精选音乐（OGG）和 credits.json（作者、许可证、来源）
-    game.py              填色进度、魔棒、油漆桶、撤销、提示、回放
-    storage.py           作品存档
-    settings.py          设置
-    library.py           内置图库（字符画）
-    render.py            把进度画成图片
-    export.py            导出 PNG / GIF / MP4
-    audio.py             合成音效和背景音乐
-    i18n.py              中英文界面文字
-  ui/                    Kivy 界面
-    app.py               管理各个页面
-    paint_canvas.py      可以缩放的填色画布
-    game_screen.py       填色页面
-    home_screen.py       首页：图库和作品集
-    import_screen.py     导入照片页面
-    settings_screen.py   设置页面
-    common.py            按钮、弹窗、字体等公共部分
-    mac_gestures.py      Mac 触控板手势（捏合缩放、双指滑动）
-    sound.py / confetti.py / exporting.py
-preview.py               不打开游戏，只在命令行预览照片转换的效果
-tests/                   自动测试（运行 pytest）
-exercises/               Python 练习（见下文）
+  core/                  game logic in plain Python, no Kivy (reusable for a future iPhone version)
+    picture.py           a color-by-number picture (palette + numbered cells)
+    converter.py         photo → picture (Lab palette, styles, recommended color count)
+    vision.py            AI assist with Apple Vision (macOS only)
+    game.py              painting, wand, bucket, undo/redo, hints, replay
+    storage.py           saving pictures and progress
+    settings.py          settings
+    library.py           built-in pictures
+    render.py            draws progress as an image
+    export.py            PNG / GIF / MP4 export
+    audio.py             synthesized sound effects and music
+    music.py             music library: featured tracks and imported music
+    i18n.py              English and Chinese interface text
+  assets/music/          featured music (OGG) and credits.json
+  ui/                    Kivy interface: screens, zoomable canvas, dialogs, sound, trackpad gestures
+preview.py               preview a photo conversion from the command line
+tests/                   automated tests (run `pytest`)
+exercises/               Python exercises that go with the project (in Chinese)
 ```
 
-## 测试
+Code comments are written in Chinese: the project started as a way to learn Python.
+
+## Tests
 
 ```bash
 pytest
 ```
 
-## 练习
+## Music credits
 
-`exercises/` 文件夹里是配合这个项目的 Python 练习：打开 `progress.py` 写函数，然后运行 `check_my_functions.py` 检查。
+All featured tracks come from OpenGameArt's
+["CC0 - Calm / Relaxing Music"](https://opengameart.org/content/cc0-calm-relaxing-music) collection and are
+released under CC0 (public domain). They were converted to loudness-matched OGG files. Thank you to the artists:
 
-## 关于 iPhone 版
-
-游戏逻辑（`colornumber/core`）和界面分开编写，Kivy 也支持 iOS，所以以后可以用 [kivy-ios](https://github.com/kivy/kivy-ios) 打包到 iPhone 上（需要 Mac 和 Xcode）。到时候需要调整的地方：
-
-- 选择照片：改用 iOS 的相册选择器
-- 中文字体：改用 iOS 系统字体的路径
-- 导出 MP4：iPhone 上没有 ffmpeg，需要换一种方式
-- AI 识别：iOS 也有 Vision 框架，但要改用 kivy-ios 的 pyobjus 来调用
-- 布局：适配竖屏和小屏幕
-
-## 精选音乐的来源
-
-这 8 首音乐都来自 OpenGameArt 的 ["CC0 - Calm / Relaxing Music"](https://opengameart.org/content/cc0-calm-relaxing-music) 合集，
-许可证都是 CC0（公有领域），可以自由使用和分发。下载后转成了 OGG 并统一了响度。感谢各位作者：
-
-| 曲名 | 作者 | 来源 |
+| Track | Artist | Source |
 |---|---|---|
-| Vaporware | cynicmusic（The Cynic Project） | [链接](https://opengameart.org/content/calm-piano-1-vaporware) |
-| Good Morning | Cakeflaps @ You're Perfect Studio | [链接](https://opengameart.org/content/good-morning) |
-| Another August | cynicmusic（The Cynic Project） | [链接](https://opengameart.org/content/another-august) |
-| November Snow | cynicmusic（The Cynic Project） | [链接](https://opengameart.org/content/november-snow) |
-| Serenade | Pro Sensory（Alex McCulloch） | [链接](https://opengameart.org/content/serenade-guitar) |
-| Bossa Shop Theme | SpringySpringo | [链接](https://opengameart.org/content/bossa-shop-theme-in-low-fi-and-hd) |
-| A Simple Trifle | jestar | [链接](https://opengameart.org/content/a-simple-trifle) |
-| Menu Chill | etrock | [链接](https://opengameart.org/content/menu-chill-music) |
+| Vaporware | cynicmusic (The Cynic Project) | [link](https://opengameart.org/content/calm-piano-1-vaporware) |
+| Good Morning | Cakeflaps @ You're Perfect Studio | [link](https://opengameart.org/content/good-morning) |
+| Another August | cynicmusic (The Cynic Project) | [link](https://opengameart.org/content/another-august) |
+| November Snow | cynicmusic (The Cynic Project) | [link](https://opengameart.org/content/november-snow) |
+| Serenade | Pro Sensory (Alex McCulloch) | [link](https://opengameart.org/content/serenade-guitar) |
+| Bossa Shop Theme | SpringySpringo | [link](https://opengameart.org/content/bossa-shop-theme-in-low-fi-and-hd) |
+| A Simple Trifle | jestar | [link](https://opengameart.org/content/a-simple-trifle) |
+| Menu Chill | etrock | [link](https://opengameart.org/content/menu-chill-music) |
 
-## 许可证
+## License
 
-代码使用 [MIT 许可证](LICENSE)：任何人都可以免费使用、修改和分发，只需要保留版权声明。
-`colornumber/assets/music/` 里的精选音乐是 CC0（公有领域），作者见上文。
-
-*Code: MIT License. Featured music in `colornumber/assets/music/`: CC0, see credits above.*
+The code is released under the [MIT License](LICENSE). The featured music in `colornumber/assets/music/`
+is CC0 (public domain); see the credits above.

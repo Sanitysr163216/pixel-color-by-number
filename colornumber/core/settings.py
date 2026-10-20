@@ -13,7 +13,7 @@ COLOR_LIMIT_CHOICES = (36, 48, 64)      # 颜色上限：36 是默认，后两�
 
 @dataclass
 class Settings:
-    language: str = "zh"              # "zh" 中文，"en" 英文
+    language: str = "en"              # "en" 英文（默认），"zh" 中文
     wrong_mode: str = BLOCK_WRONG     # 填错模式，见 game.py
     grid_limit: int = 128             # 导入照片时格子长边最多多少
     color_limit: int = 36             # 导入照片时颜色最多多少种
