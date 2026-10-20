@@ -147,12 +147,25 @@ Builder.load_string("""
                 row_force_default: True
                 col_force_default: True
                 col_default_width: (self.width - dp(4) - (self.cols - 1) * dp(14)) / self.cols
-        Label:
-            text: app.tr("drop_hint", app.lang)
-            color: 0.5, 0.5, 0.55, 1
-            font_size: "12sp"
+        BoxLayout:
             size_hint_y: None
             height: "18dp"
+            Widget:
+                size_hint_x: None
+                width: "120dp"
+            Label:
+                text: app.tr("drop_hint", app.lang)
+                color: 0.5, 0.5, 0.55, 1
+                font_size: "12sp"
+            Label:
+                text: "v" + app.version
+                color: 0.6, 0.6, 0.64, 1
+                font_size: "12sp"
+                size_hint_x: None
+                width: "120dp"
+                text_size: self.size
+                halign: "right"
+                valign: "middle"
 """)
 
 

@@ -79,10 +79,10 @@ Intel 芯片的 Mac、Windows、Linux 请用下面"从源码运行"的方式。
 ```bash
 conda activate color-number
 conda install -c conda-forge pyinstaller     # 只需要装一次
-packaging/build_macos.sh 1.0.0
+packaging/build_macos.sh
 ```
 
-打包好的 App 和用来上传到 GitHub Releases 的 zip 会出现在 `dist/` 文件夹。打包使用 PyInstaller，不附带 ffmpeg。
+版本号写在 `colornumber/__init__.py` 里。打包好的 App 和用来上传到 GitHub Releases 的 zip 会出现在 `dist/` 文件夹。打包使用 PyInstaller，不附带 ffmpeg。
 
 ## 操作方法
 

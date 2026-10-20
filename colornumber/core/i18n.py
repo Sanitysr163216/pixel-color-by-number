@@ -15,6 +15,7 @@ STRINGS = {
     "cancel": {"zh": "取消", "en": "Cancel"},
     "back": {"zh": "返回", "en": "Back"},
     "close": {"zh": "关闭", "en": "Close"},
+    "version": {"zh": "版本 {version}", "en": "Version {version}"},
     "delete": {"zh": "删除", "en": "Delete"},
     "continue": {"zh": "继续", "en": "Continue"},
 

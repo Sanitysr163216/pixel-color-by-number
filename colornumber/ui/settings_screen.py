@@ -20,7 +20,7 @@ from kivy.uix.slider import Slider
 from colornumber.core.game import ALLOW_WRONG, BLOCK_WRONG
 from colornumber.core.music import AUDIO_TYPES
 from colornumber.core.settings import COLOR_LIMIT_CHOICES, GRID_LIMIT_CHOICES
-from colornumber.ui.common import BACKGROUND, TEXT, Chip, Dialog, RoundButton, confirm, message, tr
+from colornumber.ui.common import BACKGROUND, TEXT, TEXT_LIGHT, Chip, Dialog, RoundButton, confirm, message, tr
 
 
 class SettingsScreen(Screen):
@@ -52,6 +52,10 @@ class SettingsScreen(Screen):
                       halign="left", valign="middle")
         title.bind(size=lambda widget, value: setattr(widget, "text_size", value))
         header.add_widget(title)
+        version = Label(text=tr("version", version=app.version), color=TEXT_LIGHT, font_size="14sp",
+                        size_hint_x=None, width=dp(160), halign="right", valign="middle")
+        version.bind(size=lambda widget, value: setattr(widget, "text_size", value))
+        header.add_widget(version)
         root.add_widget(header)
 
         rows = BoxLayout(orientation="vertical", spacing=dp(18), size_hint_y=None)

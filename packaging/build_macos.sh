@@ -3,14 +3,19 @@
 #
 # 用法（在项目文件夹里）：
 #     conda activate color-number
-#     packaging/build_macos.sh 1.0.0
+#     packaging/build_macos.sh
 #
+# 版本号从 colornumber/__init__.py 里读取（发布新版本时先改那里）。
 # 结果在 dist/ 文件夹：Color Number.app 和 Color-Number-<版本>-macOS-<芯片>.zip
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${1:-1.0.0}"
+VERSION="$(python -c 'import colornumber; print(colornumber.__version__)')"
+if [ -n "${1:-}" ] && [ "$1" != "$VERSION" ]; then
+    echo "版本号不一致：参数是 $1，colornumber/__init__.py 里是 $VERSION。请先改 __init__.py。" >&2
+    exit 1
+fi
 ARCH="$(uname -m)"            # arm64（Apple 芯片）或 x86_64（Intel）
 export COLOR_NUMBER_VERSION="$VERSION"
 

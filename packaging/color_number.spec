@@ -28,6 +28,8 @@ if os.path.exists(sdl3):
 deps["hiddenimports"] += [
     "colornumber.ui.game_screen", "colornumber.ui.home_screen",
     "colornumber.ui.import_screen", "colornumber.ui.settings_screen",
+    "colornumber.ui.online_screen",
+    "certifi",                                            # 在线名画联网用的证书
     "colornumber.ui.mac_gestures",
     "objc", "AppKit", "Foundation", "Quartz", "Vision",   # 触控板手势和 AI 识别
     "pillow_heif",                                        # 读取 iPhone 的 HEIC 照片

@@ -85,10 +85,10 @@ Next time, only step 5 is needed. On macOS you can also double-click the
 ```bash
 conda activate color-number
 conda install -c conda-forge pyinstaller     # only needed once
-packaging/build_macos.sh 1.0.0
+packaging/build_macos.sh
 ```
 
-The app and a zip for GitHub Releases appear in `dist/`. The build uses PyInstaller and
+The version number comes from `colornumber/__init__.py`. The app and a zip for GitHub Releases appear in `dist/`. The build uses PyInstaller and
 does not include ffmpeg.
 
 ## Controls

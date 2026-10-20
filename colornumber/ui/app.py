@@ -11,6 +11,7 @@ from kivy.core.window import Window
 from kivy.properties import NumericProperty, StringProperty
 from kivy.uix.screenmanager import FadeTransition, ScreenManager
 
+from colornumber import __version__
 from colornumber.core import library
 from colornumber.core import audio
 from colornumber.core.music import MusicLibrary, featured_tracks
@@ -24,6 +25,7 @@ from colornumber.ui.sound import SoundManager
 
 
 class ColorNumberApp(App):
+    version = __version__                # 版本号，界面上显示用
     title = "Color Number"
     lang = StringProperty("en")                  # 当前语言，界面文字会跟着它变
     settings_grid_limit = NumericProperty(128)   # 导入时格子数滑块的上限

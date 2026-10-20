@@ -398,3 +398,9 @@ def test_smooth_style_keeps_small_contrasting_features():
             image.putpixel((x, y), (20, 15, 15))
     picture = converter.convert(image, grid_size=16, color_count=4, style="smooth")
     assert picture.numbers[7][7] != picture.numbers[0][0]
+
+
+def test_version_number():
+    import re
+    import colornumber
+    assert re.fullmatch(r"\d+\.\d+\.\d+", colornumber.__version__)
