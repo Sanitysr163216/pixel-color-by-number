@@ -56,6 +56,11 @@ Builder.load_string("""
                 width: "130dp"
                 on_release: app.open_import()
             RoundButton:
+                text: app.tr("online_gallery", app.lang)
+                size_hint_x: None
+                width: "130dp"
+                on_release: app.show_online()
+            RoundButton:
                 text: app.tr("settings", app.lang)
                 size_hint_x: None
                 width: "100dp"
@@ -80,25 +85,56 @@ Builder.load_string("""
                 width: "110dp"
                 on_state: if self.state == "down": root.tab = "works"
             Widget:
-            BoxLayout:
+            # 右边：图库显示分类，我的作品显示筛选（两组叠在同一个位置，只显示一组）
+            FloatLayout:
                 size_hint_x: None
-                width: "330dp"
-                spacing: "6dp"
-                opacity: 1 if root.tab == "works" else 0
-                disabled: root.tab != "works"
-                Chip:
-                    text: app.tr("filter_all", app.lang)
-                    group: "home_filter"
-                    state: "down"
-                    on_state: if self.state == "down": root.filter = "all"
-                Chip:
-                    text: app.tr("filter_in_progress", app.lang)
-                    group: "home_filter"
-                    on_state: if self.state == "down": root.filter = "in_progress"
-                Chip:
-                    text: app.tr("filter_completed", app.lang)
-                    group: "home_filter"
-                    on_state: if self.state == "down": root.filter = "completed"
+                width: "440dp"
+                BoxLayout:
+                    pos: self.parent.pos
+                    spacing: "6dp"
+                    opacity: 1 if root.tab == "library" else 0
+                    disabled: root.tab != "library"
+                    Chip:
+                        text: app.tr("category_all", app.lang)
+                        group: "home_category"
+                        state: "down"
+                        on_state: if self.state == "down": root.category = "all"
+                    Chip:
+                        text: app.tr("category_animals", app.lang)
+                        group: "home_category"
+                        on_state: if self.state == "down": root.category = "animals"
+                    Chip:
+                        text: app.tr("category_food", app.lang)
+                        group: "home_category"
+                        on_state: if self.state == "down": root.category = "food"
+                    Chip:
+                        text: app.tr("category_nature", app.lang)
+                        group: "home_category"
+                        on_state: if self.state == "down": root.category = "nature"
+                    Chip:
+                        text: app.tr("category_things", app.lang)
+                        group: "home_category"
+                        on_state: if self.state == "down": root.category = "things"
+                BoxLayout:
+                    pos: self.parent.x + dp(110), self.parent.y
+                    size_hint_x: None
+                    width: "330dp"
+                    spacing: "6dp"
+                    opacity: 1 if root.tab == "works" else 0
+                    disabled: root.tab != "works"
+                    Chip:
+                        text: app.tr("filter_all", app.lang)
+                        group: "home_filter"
+                        state: "down"
+                        on_state: if self.state == "down": root.filter = "all"
+                    Chip:
+                        text: app.tr("filter_in_progress", app.lang)
+                        group: "home_filter"
+                        on_state: if self.state == "down": root.filter = "in_progress"
+                    Chip:
+                        text: app.tr("filter_completed", app.lang)
+                        group: "home_filter"
+                        on_state: if self.state == "down": root.filter = "completed"
         ScrollView:
             GridLayout:
                 id: grid
@@ -130,7 +166,8 @@ class Card(ButtonBehavior, BoxLayout):
             self._bg = RoundedRectangle(radius=[dp(14)])
         self.bind(pos=self._update_bg, size=self._update_bg)
 
-        self.add_widget(Image(texture=texture, fit_mode="contain"))
+        self.image = Image(texture=texture, fit_mode="contain")   # 在线图库：缩略图下载好后再换上
+        self.add_widget(self.image)
         row = BoxLayout(size_hint_y=None, height=dp(44))
         labels = BoxLayout(orientation="vertical")
         for text, color, size in ((name, TEXT, "15sp"), (status, TEXT_LIGHT, "12sp")):
@@ -166,12 +203,13 @@ def _thumbnail_texture(path):
 
 class HomeScreen(Screen):
     tab = StringProperty("library")
-    filter = StringProperty("all")
+    filter = StringProperty("all")          # 我的作品：全部 / 进行中 / 已完成
+    category = StringProperty("all")        # 图库：全部 / 动物 / 美食 / 自然 / 物品
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._library_previews = {}
-        self.bind(tab=self.refresh, filter=self.refresh)
+        self.bind(tab=self.refresh, filter=self.refresh, category=self.refresh)
         App.get_running_app().bind(lang=self.refresh)
 
     def on_pre_enter(self, *_):
@@ -205,7 +243,7 @@ class HomeScreen(Screen):
 
     def _fill_library(self, grid):
         app = App.get_running_app()
-        for key in library.LIBRARY:
+        for key in library.keys_in(self.category):
             source = f"library:{key}"
             meta = app.store.find_by_source(source)
             if meta is not None:

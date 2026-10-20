@@ -14,6 +14,7 @@ from PIL import Image as PILImage
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
+from kivy.core.window import Window
 from kivy.graphics import Color, Ellipse, Line, Rectangle, RoundedRectangle
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -21,6 +22,7 @@ from kivy.properties import BooleanProperty, ListProperty, NumericProperty, Obje
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.screenmanager import Screen
+from kivy.uix.stencilview import StencilView
 from kivy.uix.widget import Widget
 
 from colornumber.core import converter, vision
@@ -52,13 +54,21 @@ Builder.load_string("""
         value: root.value
         on_value: root.value = self.value
         cursor_size: "20dp", "20dp"
-    Label:
+    TextInput:
+        # 可以直接输入数字：按回车或点别处生效，超出范围会自动限制
+        id: number
         text: root.value_text
-        color: 0.3, 0.52, 0.95, 1
+        multiline: False
+        input_filter: "float"
         font_size: "14sp"
-        bold: True
-        size_hint_x: None
-        width: "48dp"
+        halign: "center"
+        padding: "4dp", "8dp"
+        size_hint: None, None
+        size: "58dp", "32dp"
+        pos_hint: {"center_y": 0.5}
+        foreground_color: 0.3, 0.52, 0.95, 1
+        on_text_validate: root.apply_text(self.text)
+        on_focus: if not self.focus: root.apply_text(self.text)
 
 <ImportScreen>:
     canvas.before:
@@ -127,9 +137,32 @@ Builder.load_string("""
         BoxLayout:
             orientation: "vertical"
             spacing: "6dp"
-            CompareView:
-                id: preview
-                compare: compare.state == "down"
+            FloatLayout:
+                CompareView:
+                    id: preview
+                    compare: compare.state == "down"
+                    pos: self.parent.pos
+                    size: self.parent.size
+                BoxLayout:
+                    size_hint: None, None
+                    size: "150dp", "30dp"
+                    spacing: "4dp"
+                    pos: self.parent.right - self.width - dp(6), self.parent.top - self.height - dp(6)
+                    RoundButton:
+                        text: "+"
+                        font_size: "18sp"
+                        height: "30dp"
+                        on_release: preview.zoom_step(1)
+                    RoundButton:
+                        text: "-"
+                        font_size: "18sp"
+                        height: "30dp"
+                        on_release: preview.zoom_step(-1)
+                    RoundButton:
+                        text: app.tr("fit_view", app.lang)
+                        font_size: "13sp"
+                        height: "30dp"
+                        on_release: preview.reset_view()
             Label:
                 text: root.info
                 markup: True
@@ -253,7 +286,7 @@ Builder.load_string("""
                     text: app.tr("cancel", app.lang)
                     size_hint_x: None
                     width: "90dp"
-                    on_release: app.show_home()
+                    on_release: app.leave_import()
                 RoundButton:
                     text: app.tr("start_coloring", app.lang)
                     primary: True
@@ -272,7 +305,20 @@ class SliderRow(BoxLayout):
     value_text = StringProperty("")
 
     def on_value(self, *_):
-        self.value_text = str(int(self.value)) if self.step >= 1 else f"{self.value:.2f}"
+        self.value_text = str(int(round(self.value))) if self.step >= 1 else f"{self.value:.2f}"
+        if "number" in self.ids:
+            self.ids.number.text = self.value_text     # 拖动滑块时，输入框的数字也跟着变
+
+    def apply_text(self, text):
+        """把输入框里的数字用上：按步长取整，并限制在允许范围内。"""
+        try:
+            number = float(text)
+        except ValueError:
+            number = self.value
+        number = min(self.maximum, max(self.minimum, number))
+        number = round(round(number / self.step) * self.step, 4)
+        self.value = number
+        self.on_value()
 
     def on_maximum(self, *_):
         if self.value > self.maximum:
@@ -383,43 +429,115 @@ class CropView(Widget):
         return False
 
 
-class CompareView(Widget):
+class CompareView(StencilView):
     """
-    转换结果的预览。打开"对比原图"后，左边显示原图、右边显示填色图，
-    中间的分隔线可以左右拖动，看看调整和转换让图片变了多少。
+    转换结果的预览，可以缩放和拖动。
+    - 滚轮、触控板捏合、右上角的 + / - 按钮：缩放；双击：回到"适合"大小
+    - 拖动、触控板双指滑动：移动画面
+    - 打开"对比原图"后，左边显示原图、右边显示填色图；在分隔线附近拖动是移动分隔线
+
+    填色图的贴图是每格 1 个像素，按整数倍放大显示并对齐到整像素，
+    这样每个格子都是同样大小、颜色均匀的方块。
     """
 
     compare = BooleanProperty(False)
     split = NumericProperty(0.5)          # 分隔线的位置，0 是最左，1 是最右
+    MAX_CELL = 60                         # 最多放大到每格 60 像素
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.pixel_texture = None
         self.original_texture = None
         self._labels = {}
+        self._exact_scale = None          # None 表示"适合"大小
+        self._pan = [0.0, 0.0]            # 画面中心相对控件中心的偏移（像素）
+        self._drag = None                 # "split" 或 "pan"
         self.bind(pos=self._redraw, size=self._redraw, compare=self._redraw, split=self._redraw)
 
     def set_textures(self, pixel_texture, original_texture):
+        if self.pixel_texture is None or self.pixel_texture.size != pixel_texture.size:
+            self.reset_view()             # 格子数变了，缩放回到"适合"
         self.pixel_texture = pixel_texture
         self.original_texture = original_texture
         self._redraw()
 
     def clear(self):
         self.pixel_texture = self.original_texture = None
-        self._redraw()
+        self.reset_view()
 
-    def _rect(self):
-        """
-        填色图显示的位置和大小。贴图是每格 1 个像素，放大整数倍显示，
-        并对齐到整像素，这样每个格子都是同样大小、颜色均匀的方块。
-        """
+    # ------------------------------------------------------------------
+    # 缩放和移动
+    # ------------------------------------------------------------------
+
+    def _fit_scale(self):
         width, height = self.pixel_texture.size
         scale = min(self.width / width, self.height / height)
-        if scale >= 1:
-            scale = math.floor(scale)
+        return math.floor(scale) if scale >= 1 else scale
+
+    def _scale(self):
+        """现在每格显示多少像素（2 像素以上取整，格子才会大小一样）。"""
+        fit = self._fit_scale()
+        if self._exact_scale is None or self._exact_scale <= fit:
+            return fit
+        return float(round(self._exact_scale)) if self._exact_scale >= 2 else self._exact_scale
+
+    def _rect(self):
+        width, height = self.pixel_texture.size
+        scale = self._scale()
         shown_w, shown_h = round(width * scale), round(height * scale)
-        return (round(self.x + (self.width - shown_w) / 2), round(self.y + (self.height - shown_h) / 2),
-                shown_w, shown_h)
+        # 画面不能被拖得完全看不见：最多拖到边缘还留在控件里
+        limit_x = max(0, (shown_w - self.width) / 2)
+        limit_y = max(0, (shown_h - self.height) / 2)
+        self._pan = [min(limit_x, max(-limit_x, self._pan[0])), min(limit_y, max(-limit_y, self._pan[1]))]
+        return (round(self.x + (self.width - shown_w) / 2 + self._pan[0]),
+                round(self.y + (self.height - shown_h) / 2 + self._pan[1]), shown_w, shown_h)
+
+    def reset_view(self):
+        self._exact_scale = None
+        self._pan = [0.0, 0.0]
+        self._redraw()
+
+    def zoom_at(self, x, y, factor):
+        """以 (x, y) 为中心缩放。"""
+        if self.pixel_texture is None:
+            return
+        self._rect()                      # 先把拖动范围修正好
+        old_scale = self._scale()
+        exact = self._exact_scale if self._exact_scale is not None else old_scale
+        self._exact_scale = min(self.MAX_CELL, max(self._fit_scale(), exact * factor))
+        new_scale = self._scale()
+        if new_scale == old_scale:
+            self._redraw()
+            return
+        # 让光标下的那一点缩放后还在光标下：
+        # 新的图片中心 = 光标 + (原来的图片中心 - 光标) × 放大倍数
+        ratio = new_scale / old_scale
+        old_cx, old_cy = self.center_x + self._pan[0], self.center_y + self._pan[1]
+        self._pan = [x + (old_cx - x) * ratio - self.center_x, y + (old_cy - y) * ratio - self.center_y]
+        self._redraw()
+
+    def zoom_step(self, direction):
+        """+ / - 按钮：每次放大或缩小一档。"""
+        self.zoom_at(self.center_x, self.center_y, 1.5 if direction > 0 else 1 / 1.5)
+
+    def pan_by(self, dx, dy):
+        self._pan[0] += dx
+        self._pan[1] += dy
+        self._redraw()
+
+    def wants_gesture(self):
+        """鼠标在预览图上时，接收触控板手势。"""
+        return self.pixel_texture is not None and self.collide_point(*Window.mouse_pos)
+
+    def gesture_zoom(self, factor):
+        self.zoom_at(*Window.mouse_pos, factor)
+
+    def gesture_pan(self, dx, dy):
+        self.pan_by(dx, dy)
+
+    # ------------------------------------------------------------------
+    # 画出来
+    # ------------------------------------------------------------------
 
     def _label(self, key):
         """"原图""填色图"这样的小标签的贴图。"""
@@ -429,6 +547,12 @@ class CompareView(Widget):
             label.refresh()
             self._labels[key] = (text, label.texture)
         return self._labels[key][1]
+
+    def _split_x(self):
+        x, _y, w, _h = self._rect()
+        pw = self.pixel_texture.size[0]
+        left = round(pw * self.split)               # 分隔线放在格子边界上，不把格子切成两半
+        return left, x + round(w * left / pw)
 
     def _redraw(self, *_):
         self.canvas.clear()
@@ -442,53 +566,66 @@ class CompareView(Widget):
                 return
             ow, oh = self.original_texture.size
             pw, ph = self.pixel_texture.size
-            left = round(pw * self.split)               # 分隔线放在格子边界上，不把格子切成两半
-            fraction = left / pw
-            split_x = x + round(w * fraction)
+            left, split_x = self._split_x()
             if left > 0:
-                Rectangle(texture=self.original_texture.get_region(0, 0, max(1, round(ow * fraction)), oh),
+                Rectangle(texture=self.original_texture.get_region(0, 0, max(1, round(ow * left / pw)), oh),
                           pos=(x, y), size=(split_x - x, h))
             if left < pw:
                 Rectangle(texture=self.pixel_texture.get_region(left, 0, pw - left, ph),
                           pos=(split_x, y), size=(x + w - split_x, h))
-            # 分隔线和拖动把手
+            # 分隔线和拖动把手（把手放在看得见的那一段中间）
+            visible_bottom, visible_top = max(y, self.y), min(y + h, self.top)
             Color(1, 1, 1, 1)
-            Line(points=[split_x, y, split_x, y + h], width=dp(1.5))
+            Line(points=[split_x, visible_bottom, split_x, visible_top], width=dp(1.5))
             Color(0.3, 0.52, 0.95, 1)
-            Ellipse(pos=(split_x - dp(11), y + h / 2 - dp(11)), size=(dp(22), dp(22)))
-            # 左上角"原图"、右上角"填色图"
+            middle = (visible_bottom + visible_top) / 2
+            Ellipse(pos=(split_x - dp(11), middle - dp(11)), size=(dp(22), dp(22)))
+            # 左上角"原图"、右上角"填色图"（贴着看得见的区域）
             for key, left_side in (("original_label", True), ("pixel_label", False)):
                 texture = self._label(key)
                 tw, th = texture.size
-                lx = x + dp(6) if left_side else x + w - tw - dp(14)
-                ly = y + h - th - dp(10)
+                lx = max(x, self.x) + dp(6) if left_side else min(x + w, self.right) - tw - dp(14)
+                ly = visible_top - th - dp(10)
                 Color(0, 0, 0, 0.45)
                 RoundedRectangle(pos=(lx - dp(4), ly - dp(2)), size=(tw + dp(8), th + dp(4)), radius=[dp(4)])
                 Color(1, 1, 1, 1)
                 Rectangle(texture=texture, pos=(lx, ly), size=(tw, th))
 
+    # ------------------------------------------------------------------
+    # 鼠标和触摸
+    # ------------------------------------------------------------------
+
     def on_touch_down(self, touch):
-        if self.compare and self.pixel_texture is not None and self.collide_point(*touch.pos):
-            touch.grab(self)
-            self._move_split(touch)
+        if self.pixel_texture is None or not self.collide_point(*touch.pos):
+            return super().on_touch_down(touch)
+        if touch.is_mouse_scrolling:
+            factor = 1.25 if touch.button in ("scrolldown", "scrollleft") else 1 / 1.25
+            self.zoom_at(touch.x, touch.y, factor)
             return True
-        return super().on_touch_down(touch)
+        if touch.is_double_tap:
+            self.reset_view()
+            return True
+        _left, split_x = self._split_x()
+        self._drag = "split" if self.compare and abs(touch.x - split_x) < dp(24) else "pan"
+        touch.grab(self)
+        return True
 
     def on_touch_move(self, touch):
-        if touch.grab_current is self:
-            self._move_split(touch)
-            return True
-        return False
+        if touch.grab_current is not self:
+            return False
+        if self._drag == "split":
+            x, _y, w, _h = self._rect()
+            self.split = min(1.0, max(0.0, (touch.x - x) / w))
+        else:
+            self.pan_by(touch.dx, touch.dy)
+        return True
 
     def on_touch_up(self, touch):
         if touch.grab_current is self:
             touch.ungrab(self)
+            self._drag = None
             return True
         return False
-
-    def _move_split(self, touch):
-        x, _y, w, _h = self._rect()
-        self.split = min(1.0, max(0.0, (touch.x - x) / w))
 
 
 class ImportScreen(Screen):

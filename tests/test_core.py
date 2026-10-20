@@ -164,6 +164,13 @@ def test_library_pictures_are_valid():
         widths = {len(row) for row in picture.numbers}
         assert len(widths) == 1, key
         assert set(picture.flat_numbers()) == set(range(1, picture.color_count + 1)), key
+        assert len(set(picture.palette)) == picture.color_count, key   # 不能有两个号码同一种颜色
+
+
+def test_library_categories_cover_every_picture():
+    in_categories = [key for keys in library.CATEGORIES.values() for key in keys]
+    assert sorted(in_categories) == sorted(library.LIBRARY)
+    assert library.keys_in("all") == list(library.LIBRARY)
 
 
 def test_storage_round_trip(tmp_path):

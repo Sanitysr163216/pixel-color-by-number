@@ -9,14 +9,15 @@ The interface is in English by default; Chinese is available under **Settings �
 
 ## Features
 
-- **Built-in library**: mushrooms, ginger cat, strawberry, ice cream, little house, cactus, clownfish and a lake sunset
-- **Import your own photos** (JPG, PNG, iPhone HEIC, …): crop, adjust brightness/contrast/saturation, choose the grid size and number of colors, live preview, one-click reset to defaults
+- **Built-in library**: 24 pictures in four categories (animals, food, nature, things), from a ginger cat and a penguin to a donut, a starry lake and a lighthouse
+- **Online art**: search public-domain paintings and prints from the [Art Institute of Chicago](https://www.artic.edu) (CC0) and turn any of them into a color-by-number picture
+- **Import your own photos** (JPG, PNG, iPhone HEIC, …): crop, adjust brightness/contrast/saturation, choose the grid size and number of colors (drag the sliders or type a number), live preview that you can zoom and pan, one-click reset to defaults
   - **Three styles**: **Smooth** (default: soft color transitions, rounded shapes without jagged corners), **Sharp** (sharpened edges, most detail) and **Classic** (the first version's algorithm)
   - **Compare with the original**: drag a divider between the original photo and the pixel art, with a "similar to the original" score
   - Colors are chosen in the perceptual Lab color space, and small but striking colors (eye whites, lips, highlights) get their own palette slots
   - **Recommended color count** for each picture (faithful, yet with colors that are easy to tell apart), plus a warning when colors look alike
   - **AI assist** (macOS): Apple's on-device Vision framework finds faces, facial features and the main subject, keeps more detail in faces and can blur the background
-- **Painting**: click or drag to paint, brush sizes 1×1 / 3×3 / 5×5; zoom with the mouse wheel, trackpad pinch or Cmd+scroll; pan with two fingers on the trackpad. Zoomed out you see a grey outline of the picture; zoom in and it fades to white cells with numbers
+- **Painting**: a toolbar with icons (tools, brush size, fill, view) and a **Shortcuts** list; click or drag to paint, brush sizes 1×1 / 3×3 / 5×5; zoom with the mouse wheel, trackpad pinch or Cmd+scroll; pan with two fingers on the trackpad. Zoomed out you see a grey outline of the picture; zoom in and it fades to white cells with numbers
 - **Helpers** (unlimited): highlight the current number, magic wand (fills a connected area), bucket (fills every cell of the current number; **hold** it to fill the whole picture), hint (jumps to an unfilled cell), eyedropper (Option-click), unlimited undo that survives restarts, and redo
 - **Palette**: remaining progress per color, a check mark when a color is done, auto-advance to the next color
 - **When finished**: confetti and a fast replay of your painting; export as PNG, animated GIF or MP4 video
@@ -104,6 +105,7 @@ does not include ffmpeg.
 | Hint | `H` |
 | Tools | `B` brush, `W` wand, `M` move |
 | Fit to window | `0` |
+| Full screen | `Ctrl+Cmd+F` or `F11` |
 
 On touch screens: one finger paints, two fingers zoom and pan.
 
@@ -124,7 +126,9 @@ colornumber/
     game.py              painting, wand, bucket, undo/redo, hints, replay
     storage.py           saving pictures and progress
     settings.py          settings
-    library.py           built-in pictures
+    library.py           built-in pictures and categories
+    library_more.py      more built-in pictures, drawn with simple shapes
+    online.py            online art search (Art Institute of Chicago API)
     render.py            draws progress as an image
     export.py            PNG / GIF / MP4 export
     audio.py             synthesized sound effects and music

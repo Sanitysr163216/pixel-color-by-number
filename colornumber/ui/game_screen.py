@@ -8,8 +8,9 @@ from kivy.core.window import Window
 from kivy.graphics import Color, Line, RoundedRectangle
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty
+from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.behaviors import ButtonBehavior
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
 from kivy.uix.widget import Widget
@@ -18,11 +19,22 @@ from colornumber.ui.common import (ACCENT, Chip, Dialog, LongPressButton, RoundB
                                    confirm, contrast_text_color, tr)
 from colornumber.ui.confetti import Confetti  # noqa: F401  （KV 里用到）
 from colornumber.ui.exporting import export_game, export_kinds
+from colornumber.ui.icons import IconButton, IconChip, IconLongPressButton  # noqa: F401  （KV 里用到）
 from colornumber.ui.paint_canvas import PaintCanvas  # noqa: F401  （KV 里用到）
 
 AUTOSAVE_DELAY = 1.5   # 停笔 1.5 秒后自动保存
 
 Builder.load_string("""
+<SectionLabel@Label>:
+    color: 0.50, 0.50, 0.55, 1
+    font_size: "12sp"
+    bold: True
+    size_hint_y: None
+    height: "18dp"
+    text_size: self.size
+    halign: "left"
+    valign: "bottom"
+
 <GameScreen>:
     canvas.before:
         Color:
@@ -61,15 +73,17 @@ Builder.load_string("""
                 bold: True
                 size_hint_x: None
                 width: "70dp"
-            RoundButton:
+            IconButton:
+                icon: "undo"
                 text: app.tr("undo", app.lang)
                 size_hint_x: None
-                width: "90dp"
+                width: "100dp"
                 on_release: root.undo()
-            RoundButton:
+            IconButton:
+                icon: "redo"
                 text: app.tr("redo", app.lang)
                 size_hint_x: None
-                width: "90dp"
+                width: "100dp"
                 on_release: root.redo()
             RoundButton:
                 text: app.tr("finished_menu" if root.complete else "hint", app.lang)
@@ -81,62 +95,72 @@ Builder.load_string("""
         BoxLayout:
             spacing: "8dp"
 
-            # 左边：工具
+            # 左边：工具栏，分成"工具 / 笔刷大小 / 填充 / 视图"四组
             BoxLayout:
                 orientation: "vertical"
                 size_hint_x: None
-                width: "92dp"
-                spacing: "8dp"
-                Chip:
+                width: "112dp"
+                spacing: "6dp"
+
+                SectionLabel:
+                    text: app.tr("section_tools", app.lang)
+                IconChip:
                     id: tool_brush
+                    icon: "brush"
                     text: app.tr("tool_brush", app.lang)
                     group: "tool"
                     state: "down"
-                    on_state: if self.state == "down": canvas_widget.tool = "brush"
-                Chip:
+                    on_state: if self.state == "down": root.tool = "brush"
+                IconChip:
                     id: tool_wand
+                    icon: "wand"
                     text: app.tr("tool_wand", app.lang)
                     group: "tool"
-                    on_state: if self.state == "down": canvas_widget.tool = "wand"
-                Chip:
+                    on_state: if self.state == "down": root.tool = "wand"
+                IconChip:
                     id: tool_move
+                    icon: "move"
                     text: app.tr("tool_move", app.lang)
                     group: "tool"
-                    on_state: if self.state == "down": canvas_widget.tool = "move"
-                Label:
+                    on_state: if self.state == "down": root.tool = "move"
+
+                # 笔刷大小只对画笔有用：用别的工具时变淡，点一下就切回画笔
+                SectionLabel:
                     text: app.tr("brush_size", app.lang)
-                    color: 0.45, 0.45, 0.5, 1
-                    font_size: "12sp"
-                    size_hint_y: None
-                    height: "16dp"
                 BoxLayout:
                     size_hint_y: None
-                    height: "30dp"
-                    spacing: "3dp"
-                    Chip:
+                    height: "34dp"
+                    spacing: "4dp"
+                    opacity: 1 if root.tool == "brush" else 0.45
+                    IconChip:
                         id: brush_1
-                        text: "1"
+                        icon: "size_1"
                         group: "brush"
                         state: "down"
-                        height: "30dp"
-                        on_state: if self.state == "down": canvas_widget.brush = 1
-                    Chip:
+                        height: "34dp"
+                        on_state: if self.state == "down": root.set_brush(1)
+                        on_press: root.set_tool("brush")
+                    IconChip:
                         id: brush_3
-                        text: "3"
+                        icon: "size_3"
                         group: "brush"
-                        height: "30dp"
-                        on_state: if self.state == "down": canvas_widget.brush = 3
-                    Chip:
+                        height: "34dp"
+                        on_state: if self.state == "down": root.set_brush(3)
+                        on_press: root.set_tool("brush")
+                    IconChip:
                         id: brush_5
-                        text: "5"
+                        icon: "size_5"
                         group: "brush"
-                        height: "30dp"
-                        on_state: if self.state == "down": canvas_widget.brush = 5
-                Widget:
-                    size_hint_y: None
-                    height: "4dp"
-                LongPressButton:
+                        height: "34dp"
+                        on_state: if self.state == "down": root.set_brush(5)
+                        on_press: root.set_tool("brush")
+
+                SectionLabel:
+                    text: app.tr("section_fill", app.lang)
+                IconLongPressButton:
+                    icon: "bucket"
                     text: app.tr("tool_bucket", app.lang)
+                    height: "36dp"
                     on_release: root.bucket()
                     on_long_press: root.ask_fill_all()
                 Label:
@@ -145,29 +169,33 @@ Builder.load_string("""
                     font_size: "11sp"
                     size_hint_y: None
                     height: "14dp"
+
+                SectionLabel:
+                    text: app.tr("section_view", app.lang)
                 BoxLayout:
                     size_hint_y: None
-                    height: "40dp"
+                    height: "34dp"
                     spacing: "4dp"
-                    RoundButton:
-                        text: "+"
-                        font_size: "20sp"
+                    IconButton:
+                        icon: "zoom_in"
+                        height: "34dp"
                         on_release: canvas_widget.zoom_at(canvas_widget.center_x, canvas_widget.center_y, 1.4)
-                    RoundButton:
-                        text: "-"
-                        font_size: "20sp"
+                    IconButton:
+                        icon: "zoom_out"
+                        height: "34dp"
                         on_release: canvas_widget.zoom_at(canvas_widget.center_x, canvas_widget.center_y, 1 / 1.4)
-                RoundButton:
-                    text: app.tr("fit_view", app.lang)
-                    on_release: canvas_widget.fit()
+                    IconButton:
+                        icon: "fit"
+                        height: "34dp"
+                        on_release: canvas_widget.fit()
+
                 Widget:
-                Label:
-                    text: app.tr("controls_help", app.lang)
-                    color: 0.5, 0.5, 0.55, 1
-                    font_size: "11sp"
-                    text_size: self.width, None
-                    size_hint_y: None
-                    height: self.texture_size[1]
+                IconButton:
+                    icon: "help"
+                    text: app.tr("shortcuts", app.lang)
+                    height: "36dp"
+                    font_size: "14sp"
+                    on_release: root.show_shortcuts()
 
             FloatLayout:
                 PaintCanvas:
@@ -253,6 +281,7 @@ class GameScreen(Screen):
     title = ObjectProperty("")
     percent = NumericProperty(0)
     complete = BooleanProperty(False)     # 已完成时"提示"按钮变成"完成菜单"
+    tool = StringProperty("brush")        # 当前工具：brush、wand 或 move
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -306,6 +335,9 @@ class GameScreen(Screen):
         """用代码切换工具。（用代码改按钮状态时，同组的其他按钮要自己取消选中）"""
         for tool in ("brush", "wand", "move"):
             self.ids[f"tool_{tool}"].state = "down" if tool == name else "normal"
+
+    def on_tool(self, _screen, name):
+        self.canvas_widget.tool = name
 
     # ------------------------------------------------------------------
     # 颜色栏
@@ -397,8 +429,36 @@ class GameScreen(Screen):
         self._select(number)
 
     def set_brush(self, size):
+        """换笔刷大小，并切回画笔（别的工具用不到笔刷大小）。"""
+        self.canvas_widget.brush = size
         for value in (1, 3, 5):
             self.ids[f"brush_{value}"].state = "down" if value == size else "normal"
+        self.set_tool("brush")
+
+    def show_shortcuts(self):
+        """弹出快捷键列表：左边是按键，右边是作用。"""
+        rows = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None)
+        rows.bind(minimum_height=rows.setter("height"))
+        for line in tr("shortcut_list").splitlines():
+            keys, action = line.split("\t")
+            row = BoxLayout(spacing=dp(12), size_hint_y=None)
+            labels = []
+            for text, width, bold in ((keys, dp(180), True), (action, dp(184), False)):
+                label = Label(text=text, bold=bold, font_size="14sp", size_hint_x=None, width=width,
+                              halign="left", valign="top", text_size=(width, None),
+                              color=ACCENT if bold else (0.2, 0.2, 0.25, 1))
+                labels.append(label)
+                row.add_widget(label)
+
+            def fit_row(*_, row=row, labels=labels):
+                # 一行的高度跟较高的那一格一样（按键说明太长会换行）
+                row.height = max(label.texture_size[1] for label in labels)
+                for label in labels:
+                    label.text_size = (label.width, row.height)
+            for label in labels:
+                label.bind(texture_size=fit_row)
+            rows.add_widget(row)
+        Dialog("", [(tr("close"), None, "primary")], title=tr("shortcuts"), content=rows).open()
 
     def bucket(self):
         if self.canvas_widget.locked:

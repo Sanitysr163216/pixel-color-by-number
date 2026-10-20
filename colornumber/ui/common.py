@@ -225,6 +225,7 @@ class Chip(ToggleButton):
     def on_touch_down(self, touch):
         # 已选中的不允许再点一下取消，保证一组里总有一个被选中
         if self.state == "down" and self.collide_point(*touch.pos) and self.group:
+            self.dispatch("on_press")      # 仍然告诉别人"被点了一下"（比如点笔刷大小时切回画笔）
             return True
         return super().on_touch_down(touch)
 

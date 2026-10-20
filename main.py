@@ -11,6 +11,8 @@ import os
 
 # 播放声音用 SDL2：Kivy 默认的 GStreamer 在 conda 环境里缺少 WAV 解码插件，会没有声音
 os.environ.setdefault("KIVY_AUDIO", "sdl2")
+# 不使用 macOS 的"全屏空间"：它和 SDL3 互相等待会卡死（见 colornumber/ui/window_fix.py）
+os.environ.setdefault("SDL_VIDEO_MAC_FULLSCREEN_SPACES", "0")
 
 from kivy.config import Config  # noqa: E402
 

@@ -7,6 +7,7 @@ COLORS 字典规定了每个字符是什么颜色。风景图用代码按规则�
 
 import math
 
+from colornumber.core import library_more as more
 from colornumber.core.picture import Picture
 
 # ---------------------------------------------------------------------------
@@ -288,7 +289,8 @@ def _from_art(art):
             usage[char] = usage.get(char, 0) + 1
     ordered = sorted(usage, key=lambda char: usage[char], reverse=True)
     number_of = {char: i + 1 for i, char in enumerate(ordered)}
-    number_of[" "] = number_of["."]
+    if "." in number_of:
+        number_of[" "] = number_of["."]
     numbers = [[number_of[char] for char in row] for row in rows]
     palette = [art["colors"][char] for char in ordered]
     return Picture(palette=palette, numbers=numbers)
@@ -357,7 +359,39 @@ LIBRARY = {
     "cactus": lambda: _from_art(CACTUS),
     "fish": lambda: _from_art(FISH),
     "sunset": _sunset,
+    # 第二批（library_more.py）
+    "penguin": lambda: _from_art(more.PENGUIN),
+    "fox": lambda: _from_art(more.FOX),
+    "ladybug": lambda: _from_art(more.LADYBUG),
+    "whale": lambda: _from_art(more.WHALE),
+    "watermelon": lambda: _from_art(more.WATERMELON),
+    "donut": lambda: _from_art(more.DONUT),
+    "cupcake": lambda: _from_art(more.CUPCAKE),
+    "avocado": lambda: _from_art(more.AVOCADO),
+    "coffee": lambda: _from_art(more.COFFEE),
+    "sunflower": lambda: _from_art(more.SUNFLOWER),
+    "rainbow": lambda: _from_art(more.RAINBOW),
+    "night": lambda: _from_art(more.NIGHT),
+    "blossom": lambda: _from_art(more.BLOSSOM),
+    "balloon": lambda: _from_art(more.BALLOON),
+    "rocket": lambda: _from_art(more.ROCKET),
+    "lighthouse": lambda: _from_art(more.LIGHTHOUSE),
 }
+
+# 图库的分类：分类名的翻译在 i18n.py 里（"category_<名字>"）
+CATEGORIES = {
+    "animals": ["cat", "fish", "penguin", "fox", "ladybug", "whale"],
+    "food": ["strawberry", "ice_cream", "watermelon", "donut", "cupcake", "avocado", "coffee"],
+    "nature": ["mushroom", "cactus", "sunflower", "blossom", "sunset", "rainbow", "night"],
+    "things": ["house", "balloon", "rocket", "lighthouse"],
+}
+
+
+def keys_in(category):
+    """某个分类里的图（"all" 是全部）。"""
+    if category == "all":
+        return list(LIBRARY)
+    return CATEGORIES[category]
 
 
 def load(key):

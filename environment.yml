@@ -10,6 +10,7 @@ dependencies:
   - imageio          # 导出 MP4
   - imageio-ffmpeg   # 导出 MP4 需要的视频编码器
   - pytest           # 运行 tests 文件夹里的测试
+  - certifi          # 在线图库联网时用的安全证书
   - pip
   - pip:
       # 只在 macOS 上安装：触控板手势和 AI 识别（Apple Vision）需要它们

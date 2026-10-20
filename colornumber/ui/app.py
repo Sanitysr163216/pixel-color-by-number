@@ -18,6 +18,7 @@ from colornumber.core.i18n import project_name
 from colornumber.core.i18n import tr as translate
 from colornumber.core.settings import Settings
 from colornumber.core.storage import ProjectStore
+from colornumber.ui import window_fix
 from colornumber.ui.common import BACKGROUND, register_chinese_font
 from colornumber.ui.sound import SoundManager
 
@@ -59,12 +60,14 @@ class ColorNumberApp(App):
         from colornumber.ui.home_screen import HomeScreen
         from colornumber.ui.import_screen import ImportScreen
         from colornumber.ui.settings_screen import SettingsScreen
+        from colornumber.ui.online_screen import OnlineScreen
 
         self.screens = ScreenManager(transition=FadeTransition(duration=0.15))
         self.screens.add_widget(HomeScreen(name="home"))
         self.screens.add_widget(GameScreen(name="game"))
         self.screens.add_widget(ImportScreen(name="import"))
         self.screens.add_widget(SettingsScreen(name="settings"))
+        self.screens.add_widget(OnlineScreen(name="online"))
         Window.bind(on_drop_file=self._on_drop_file)
         return self.screens
 
@@ -92,6 +95,9 @@ class ColorNumberApp(App):
         if works:
             self.screens.get_screen("home").show_works()
 
+    def show_online(self):
+        self.screens.current = "online"
+
     def show_settings(self):
         self.screens.current = "settings"
 
@@ -108,14 +114,26 @@ class ColorNumberApp(App):
             meta = self.store.create(library.load(key), self.tr(f"library_{key}"), source)
         self.open_project(meta["id"])
 
-    def open_import(self, path=None):
+    def open_import(self, path=None, name=None, came_from="home"):
+        """
+        打开导入页面。name 是作品的默认名字（不给就用文件名），
+        came_from 是在导入页面点"返回"时回到哪一页。
+        """
         from colornumber.ui.import_screen import pick_photo
 
         if path is None:
             pick_photo(self.open_import)
             return
-        if self.screens.get_screen("import").load_photo(path):
+        screen = self.screens.get_screen("import")
+        if screen.load_photo(path):
+            if name:
+                screen.ids.name.text = name
+            self._import_came_from = came_from
             self.screens.current = "import"
+
+    def leave_import(self):
+        """导入页面的"返回"：回到打开它的那一页。"""
+        self.screens.current = getattr(self, "_import_came_from", "home")
 
     def _on_drop_file(self, _window, path, *_):
         if self.screens.current in ("home", "import"):
@@ -160,15 +178,27 @@ class ColorNumberApp(App):
     # 程序关闭或切到后台时保存
     # ------------------------------------------------------------------
 
+    def _on_global_key(self, _window, key, _scancode, codepoint, modifiers):
+        """全局快捷键：Ctrl+Cmd+F 或 F11 进入、退出全屏。"""
+        if key == 292 or (codepoint == "f" and "ctrl" in modifiers and "meta" in modifiers):
+            window_fix.toggle_fullscreen()
+            return True
+        return False
+
     def on_start(self):
+        window_fix.install()
+        Window.bind(on_key_down=self._on_global_key)
         # Mac 触控板：捏合缩放、双指滑动移动画布（只在填色页面、鼠标在画布上时）
         from colornumber.ui import mac_gestures
 
         def gesture_target():
-            if self.screens.current != "game":
-                return None
-            canvas = self.screens.get_screen("game").canvas_widget
-            return canvas if canvas.wants_gesture() else None
+            if self.screens.current == "game":
+                canvas = self.screens.get_screen("game").canvas_widget
+                return canvas if canvas.wants_gesture() else None
+            if self.screens.current == "import":
+                preview = self.screens.get_screen("import").ids.preview
+                return preview if preview.wants_gesture() else None
+            return None
 
         mac_gestures.install(gesture_target)
 

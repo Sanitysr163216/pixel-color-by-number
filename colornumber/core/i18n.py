@@ -49,6 +49,50 @@ STRINGS = {
     "library_cactus": {"zh": "仙人掌", "en": "Cactus"},
     "library_fish": {"zh": "小丑鱼", "en": "Clownfish"},
     "library_sunset": {"zh": "湖边日落", "en": "Lake Sunset"},
+    "library_penguin": {"zh": "企鹅", "en": "Penguin"},
+    "library_fox": {"zh": "小狐狸", "en": "Little Fox"},
+    "library_ladybug": {"zh": "瓢虫", "en": "Ladybug"},
+    "library_whale": {"zh": "鲸鱼", "en": "Whale"},
+    "library_watermelon": {"zh": "西瓜", "en": "Watermelon"},
+    "library_donut": {"zh": "甜甜圈", "en": "Donut"},
+    "library_cupcake": {"zh": "纸杯蛋糕", "en": "Cupcake"},
+    "library_avocado": {"zh": "牛油果", "en": "Avocado"},
+    "library_coffee": {"zh": "一杯咖啡", "en": "Cup of Coffee"},
+    "library_sunflower": {"zh": "向日葵", "en": "Sunflower"},
+    "library_rainbow": {"zh": "彩虹", "en": "Rainbow"},
+    "library_night": {"zh": "星空湖畔", "en": "Starry Lake"},
+    "library_blossom": {"zh": "樱花树", "en": "Cherry Blossom"},
+    "library_balloon": {"zh": "热气球", "en": "Hot Air Balloon"},
+    "library_rocket": {"zh": "火箭", "en": "Rocket"},
+    "library_lighthouse": {"zh": "灯塔", "en": "Lighthouse"},
+    "category_all": {"zh": "全部", "en": "All"},
+    "category_animals": {"zh": "动物", "en": "Animals"},
+    "category_food": {"zh": "美食", "en": "Food"},
+    "category_nature": {"zh": "自然", "en": "Nature"},
+    "category_things": {"zh": "物品", "en": "Things"},
+
+    # 在线图库
+    "online_gallery": {"zh": "在线名画", "en": "Online Art"},
+    "online_search_hint": {"zh": "用英文搜索，比如 cat、flowers、mountain",
+                           "en": "Search, e.g. cat, flowers, mountain"},
+    "search": {"zh": "搜索", "en": "Search"},
+    "topic_flowers": {"zh": "花", "en": "Flowers"},
+    "topic_cats": {"zh": "猫", "en": "Cats"},
+    "topic_birds": {"zh": "鸟", "en": "Birds"},
+    "topic_landscape": {"zh": "风景", "en": "Landscapes"},
+    "topic_sea": {"zh": "海和船", "en": "Sea & Boats"},
+    "topic_japan": {"zh": "日本浮世绘", "en": "Japanese Prints"},
+    "online_loading": {"zh": "正在加载……", "en": "Loading…"},
+    "online_no_results": {"zh": "没有找到，换个词试试（用英文搜索）。",
+                          "en": "Nothing found. Try another word."},
+    "online_error": {"zh": "连不上博物馆的服务器，请检查网络后再试。",
+                     "en": "Can't reach the museum's server. Check your internet connection and try again."},
+    "online_load_more": {"zh": "加载更多", "en": "Load More"},
+    "online_credit": {"zh": "名画来自芝加哥艺术博物馆，都属于公有领域（CC0），可以自由使用。",
+                      "en": "Artworks from the Art Institute of Chicago, all in the public domain (CC0)."},
+    "online_public_domain": {"zh": "公有领域（CC0），可以自由使用", "en": "Public domain (CC0), free to use"},
+    "online_use": {"zh": "做成填色图", "en": "Use This Picture"},
+    "online_downloading": {"zh": "正在下载……", "en": "Downloading…"},
 
     # 填色页面
     "undo": {"zh": "撤销", "en": "Undo"},
@@ -59,16 +103,45 @@ STRINGS = {
     "tool_brush": {"zh": "画笔", "en": "Brush"},
     "tool_wand": {"zh": "魔棒", "en": "Wand"},
     "tool_bucket": {"zh": "油漆桶", "en": "Bucket"},
-    "bucket_hint": {"zh": "长按：填完整张图", "en": "Hold: fill everything"},
+    "bucket_hint": {"zh": "长按：全部填完", "en": "Hold: fill all"},
     "fill_all": {"zh": "一键填完", "en": "Fill All"},
     "confirm_fill_all": {"zh": "要一键填完剩下的 {cells} 格吗？填完后可以撤销。",
                          "en": "Fill the remaining {cells} cells at once? You can undo it afterwards."},
     "tool_move": {"zh": "移动", "en": "Move"},
     "fit_view": {"zh": "全图", "en": "Fit"},
     "progress": {"zh": "{percent}%", "en": "{percent}%"},
-    "controls_help": {
-        "zh": "捏合/滚轮 缩放\nCmd+滚动 缩放\n双指滑 移动\n右键拖 移动\nOption+点 吸色\nCmd+Z 撤销\n[ ] 笔刷大小\nH 提示",
-        "en": "Pinch: zoom\nWheel: zoom\nCmd+wheel: zoom\n2 fingers: pan\nRight-drag: pan\nOpt+click: pick\nCmd+Z: undo\n[ ]: brush\nH: hint",
+    "section_tools": {"zh": "工具", "en": "Tools"},
+    "section_fill": {"zh": "填充", "en": "Fill"},
+    "section_view": {"zh": "视图", "en": "View"},
+    "shortcuts": {"zh": "快捷键", "en": "Shortcuts"},
+    # 快捷键列表：每行是"按键<Tab>作用"
+    "shortcut_list": {
+        "zh": "点击或拖动\t填色\n"
+              "B / W / M\t画笔 / 魔棒 / 移动\n"
+              "[  ]\t笔刷变小 / 变大\n"
+              "Option + 点击\t吸取格子的颜色\n"
+              "Cmd+Z / Cmd+Shift+Z\t撤销 / 重做\n"
+              "H\t提示一个没填的格子\n"
+              "按住油漆桶\t填完整张图\n"
+              "双指捏合、滚轮\t缩放\n"
+              "Cmd + 滚动、+ / -\t缩放\n"
+              "双指滑动、右键拖动\t移动画面\n"
+              "按住空格拖动、方向键\t移动画面\n"
+              "0\t显示全图\n"
+              "Ctrl+Cmd+F 或 F11\t全屏",
+        "en": "Click or drag\tPaint\n"
+              "B / W / M\tBrush / Wand / Move\n"
+              "[  ]\tSmaller / larger brush\n"
+              "Option + click\tPick a cell's color\n"
+              "Cmd+Z / Cmd+Shift+Z\tUndo / redo\n"
+              "H\tHint an unfilled cell\n"
+              "Hold the bucket\tFill everything\n"
+              "Pinch, mouse wheel\tZoom\n"
+              "Cmd + scroll, + / -\tZoom\n"
+              "2-finger swipe, right-drag\tPan\n"
+              "Space + drag, arrow keys\tPan\n"
+              "0\tFit to window\n"
+              "Ctrl+Cmd+F or F11\tFull screen",
     },
     "picture_complete": {"zh": "完成啦！", "en": "Finished!"},
     "export_png": {"zh": "导出图片 PNG", "en": "Export PNG"},
