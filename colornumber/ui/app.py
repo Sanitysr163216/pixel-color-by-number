@@ -27,6 +27,8 @@ from colornumber.ui.sound import SoundManager
 class ColorNumberApp(App):
     version = __version__                # 版本号，界面上显示用
     title = "Color Number"
+    # 窗口标题栏和任务栏上的小图标（不设置的话 Windows 上会显示 Kivy 的图标）
+    icon = str(Path(__file__).resolve().parent.parent / "assets" / "icon.png")
     lang = StringProperty("en")                  # 当前语言，界面文字会跟着它变
     settings_grid_limit = NumericProperty(128)   # 导入时格子数滑块的上限
     settings_color_limit = NumericProperty(36)   # 导入时颜色数滑块的上限
