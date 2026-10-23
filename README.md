@@ -18,11 +18,12 @@ The interface is in English by default; Chinese is available under **Settings �
   - **Recommended color count** for each picture (faithful, yet with colors that are easy to tell apart), plus a warning when colors look alike
   - **AI assist** (macOS): Apple's on-device Vision framework finds faces, facial features and the main subject, keeps more detail in faces and can blur the background
 - **Painting**: a toolbar with icons (tools, brush size, fill, view) and a **Shortcuts** list; click or drag to paint, brush sizes 1×1 / 3×3 / 5×5; zoom with the mouse wheel, trackpad pinch or Cmd+scroll; pan with two fingers on the trackpad. Zoomed out you see a grey outline of the picture; zoom in and it fades to white cells with numbers
-- **Helpers** (unlimited): highlight the current number, magic wand (fills a connected area), bucket (fills every cell of the current number; **hold** it to fill the whole picture), hint (jumps to an unfilled cell), eyedropper (Option-click), unlimited undo that survives restarts, and redo
+- **Helpers** (unlimited): highlight the current number, magic wand (fills a connected area), bucket (fills every cell of the current number; **hold** it to fill the whole picture), hint (jumps to an unfilled cell), eyedropper (Option-click), unlimited undo and redo that survive restarts (the buttons dim when there is nothing to undo or redo)
 - **Palette**: remaining progress per color, a check mark when a color is done, auto-advance to the next color
 - **When finished**: confetti and a fast replay of your painting; export as PNG, animated GIF or MP4 video
 - **Gallery**: filter in-progress / finished pictures; continue, rename, restart, export or delete; progress is saved automatically
-- **Music**: 8 relaxing CC0 tracks (see credits below) plus 5 synthesized tracks, shuffled; import your own music (MP3, OGG, FLAC, WAV, M4A, …) and choose which sources to play
+- **Hide pictures** you don't want to see, in the Library or My Works (from the card's … menu). They are not deleted: **Show hidden** brings them back
+- **Music**: 8 relaxing CC0 tracks (see credits below) plus 5 synthesized tracks, shuffled; pick any track from the list in Settings; import your own music (MP3, OGG, FLAC, WAV, M4A, …) and choose which sources to play
 - **Sound effects** (synthesized): fill "pops" climb a pentatonic scale as you drag; a softer sound for wrong colors
 - **Settings**: language, what happens on a wrong color (block it, or paint it and mark it wrong), larger grid and color limits, sound and music volume
 

@@ -42,6 +42,10 @@ STRINGS = {
     "not_started": {"zh": "未开始", "en": "Not started"},
     "restart": {"zh": "重新开始", "en": "Restart"},
     "rename": {"zh": "重命名", "en": "Rename"},
+    "open_picture": {"zh": "开始填色", "en": "Start Coloring"},
+    "hide": {"zh": "隐藏", "en": "Hide"},
+    "unhide": {"zh": "取消隐藏", "en": "Unhide"},
+    "show_hidden": {"zh": "显示已隐藏（{count}）", "en": "Show hidden ({count})"},
     "export": {"zh": "导出", "en": "Export"},
     "confirm_restart": {"zh": "确定要清空「{name}」的进度、从头开始吗？",
                         "en": "Clear all progress of \"{name}\" and start over?"},
@@ -105,7 +109,7 @@ STRINGS = {
 
     # 填色页面
     "undo": {"zh": "撤销", "en": "Undo"},
-    "redo": {"zh": "重做", "en": "Redo"},
+    "redo": {"zh": "重画", "en": "Redo"},
     "brush_size": {"zh": "笔刷大小", "en": "Brush size"},
     "hint": {"zh": "提示", "en": "Hint"},
     "finished_menu": {"zh": "导出…", "en": "Export…"},
@@ -129,7 +133,7 @@ STRINGS = {
               "B / W / M\t画笔 / 魔棒 / 移动\n"
               "[  ]\t笔刷变小 / 变大\n"
               "{alt} + 点击\t吸取格子的颜色\n"
-              "{cmd}+Z / {cmd}+Shift+Z\t撤销 / 重做\n"
+              "{cmd}+Z / {cmd}+Shift+Z\t撤销 / 重画撤销的笔画\n"
               "H\t提示一个没填的格子\n"
               "按住油漆桶\t填完整张图\n"
               "双指捏合、滚轮\t缩放\n"

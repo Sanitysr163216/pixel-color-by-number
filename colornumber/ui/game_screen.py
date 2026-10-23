@@ -78,12 +78,16 @@ Builder.load_string("""
                 text: app.tr("undo", app.lang)
                 size_hint_x: None
                 width: "100dp"
+                disabled: not root.can_undo
+                opacity: 1 if root.can_undo else 0.45
                 on_release: root.undo()
             IconButton:
                 icon: "redo"
                 text: app.tr("redo", app.lang)
                 size_hint_x: None
                 width: "100dp"
+                disabled: not root.can_redo
+                opacity: 1 if root.can_redo else 0.45
                 on_release: root.redo()
             RoundButton:
                 text: app.tr("finished_menu" if root.complete else "hint", app.lang)
@@ -282,6 +286,8 @@ class GameScreen(Screen):
     percent = NumericProperty(0)
     complete = BooleanProperty(False)     # 已完成时"提示"按钮变成"完成菜单"
     tool = StringProperty("brush")        # 当前工具：brush、wand 或 move
+    can_undo = BooleanProperty(False)     # 有没有可以撤销的笔画
+    can_redo = BooleanProperty(False)     # 有没有撤销掉、可以重画回来的笔画
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -368,6 +374,11 @@ class GameScreen(Screen):
     def _update_progress(self):
         self.percent = int(self.game.progress() * 100)
         self.complete = self.game.is_complete()
+        self._update_history_buttons()
+
+    def _update_history_buttons(self):
+        self.can_undo = bool(self.game.history)
+        self.can_redo = bool(self.game.redo_stack)
 
     # ------------------------------------------------------------------
     # 画布传来的事件
@@ -386,6 +397,7 @@ class GameScreen(Screen):
 
     def on_stroke_end(self):
         self._save_trigger()
+        self._update_history_buttons()
         app = self.app
         app.sounds.start_stroke()
         if self.game.is_complete():
@@ -555,6 +567,7 @@ class GameScreen(Screen):
     def _on_key_down(self, _window, key, _scancode, codepoint, modifiers):
         canvas = self.canvas_widget
         command = "meta" in modifiers or "ctrl" in modifiers
+        codepoint = (codepoint or "").lower()     # 按着 Shift 时有的系统给的是大写字母
         if command and codepoint == "z" and "shift" in modifiers:
             self.redo()
         elif command and codepoint == "y":

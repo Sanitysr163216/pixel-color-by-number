@@ -143,8 +143,14 @@ ICONS = {
     "size_5": ["." * 12] + ["." + "##########" + "."] * 10 + ["." * 12],
 }
 
-# 重做的箭头就是撤销的箭头左右翻过来
+# 重画的箭头就是撤销的箭头左右翻过来
 ICONS["redo"] = [row[::-1] for row in ICONS["undo"]]
+# 播放：向右的三角形
+ICONS["play"] = ["." * 12] + ["..{}{}".format("#" * (2 * min(r, 9 - r) + 1), "." * (9 - 2 * min(r, 9 - r)))
+                             for r in range(10)] + ["." * 12]
+# 正在播放：高低不同的四根音量条（每根 2 格宽，从下往上的高度是 6、10、4、8）
+ICONS["playing"] = ["".join("#" if c % 3 != 2 and 11 - r < (6, 10, 4, 8)[c // 3] else "." for c in range(12))
+                    for r in range(12)]
 
 ART_SIZE = 12
 _textures = {}

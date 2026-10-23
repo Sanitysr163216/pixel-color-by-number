@@ -234,8 +234,20 @@ def test_redo():
     assert game.redo() == []
     game.undo()
     game.paint(2, 2)          # 不在一笔里（没有 begin_stroke），不记录
-    game.bucket(3)            # 新的一笔会清空重做
+    game.bucket(3)            # 新的一笔会清空重画
     assert game.redo() == []
+
+
+def test_redo_survives_saving(tmp_path):
+    store = ProjectStore(tmp_path)
+    meta = store.create(small_picture(), "测试", "import")
+    _, game = store.load(meta["id"], BLOCK_WRONG)
+    game.bucket(1)
+    painted = game.painted[:]
+    game.undo()
+    store.save(meta, game)
+    _, again = store.load(meta["id"], BLOCK_WRONG)   # 关掉再打开，还能重画
+    assert again.redo() and again.painted == painted
 
 
 def test_fill_all_in_one_stroke():
@@ -414,3 +426,12 @@ def test_interface_text_fills_key_names():
             assert "{cmd}" not in text and "{alt}" not in text and "{fullscreen}" not in text, key
     # 没有给出的占位符原样保留，不会出错
     assert i18n.tr("progress", "en") == "{percent}%"
+
+
+def test_hidden_pictures_are_saved(tmp_path):
+    path = tmp_path / "settings.json"
+    settings = Settings()
+    assert settings.hidden == [] and Settings().hidden is not settings.hidden   # 每份设置有自己的列表
+    settings.hidden = ["library:cat", "project:abc"]
+    settings.save(path)
+    assert Settings.load(path).hidden == ["library:cat", "project:abc"]

@@ -19,6 +19,7 @@ from colornumber.core.game import ALLOW_WRONG, BLOCK_WRONG
 from colornumber.core.music import AUDIO_TYPES, PLAYABLE, can_convert
 from colornumber.core.settings import COLOR_LIMIT_CHOICES, GRID_LIMIT_CHOICES
 from colornumber.ui.common import BACKGROUND, TEXT, TEXT_LIGHT, Chip, Dialog, RoundButton, confirm, message, tr
+from colornumber.ui.icons import IconButton
 from colornumber.ui.pickers import pick_files
 
 
@@ -83,15 +84,22 @@ class SettingsScreen(Screen):
         rows.add_widget(self._choice_row(
             "music_source", [("all", tr("source_all")), ("featured", tr("source_featured")),
                              ("synth", tr("source_synth")), ("mine", tr("source_mine"))],
-            settings.music_source, lambda value, _revert: app.update_setting("music_source", value)))
+            settings.music_source, self._choose_music_source))
         rows.add_widget(self._now_playing_row())
+        self._track_list = BoxLayout(orientation="vertical", spacing=dp(6), size_hint_y=None)
+        self._track_list.bind(minimum_height=self._track_list.setter("height"))
+        rows.add_widget(self._track_list)
+        self._fill_track_list()
+        app.sounds.on_list_change = self._fill_track_list
         rows.add_widget(self._my_music_row())
-        for track in app.music_library.tracks():
-            rows.add_widget(self._my_track_row(track))
 
-        scroll = ScrollView()
-        scroll.add_widget(rows)
-        root.add_widget(scroll)
+        # 重新建立页面时（比如点歌单打开了音乐），保持原来滚动到的位置
+        old_scroll = getattr(self, "_scroll", None)
+        self._scroll = ScrollView()
+        self._scroll.add_widget(rows)
+        if old_scroll is not None:
+            self._scroll.scroll_y = old_scroll.scroll_y
+        root.add_widget(self._scroll)
         self.add_widget(root)
 
     def _title(self, key):
@@ -130,7 +138,11 @@ class SettingsScreen(Screen):
             else:
                 label.text = tr("nothing_playing")
 
-        app.sounds.on_track_change = show
+        def track_changed(key=None):
+            show(key)
+            self._fill_track_list()
+
+        app.sounds.on_track_change = track_changed
         show()
         button = RoundButton(text=tr("next_track"), size_hint_x=None, width=dp(110))
         button.bind(on_release=lambda _b: app.sounds.next_track())
@@ -152,18 +164,54 @@ class SettingsScreen(Screen):
         row.add_widget(self._music_status)
         return row
 
-    def _my_track_row(self, track):
+    # ------------------------------------------------------------------
+    # 歌单：当前曲库里的所有曲子，点一首就播放它
+    # ------------------------------------------------------------------
+
+    def _choose_music_source(self, value, _revert):
+        App.get_running_app().update_setting("music_source", value)
+        self._fill_track_list()
+
+    def _fill_track_list(self):
+        app = App.get_running_app()
+        self._track_list.clear_widgets()
+        playing = app.sounds.current_track if app.settings.music else None
+        for key in app.sounds.tracks():
+            self._track_list.add_widget(self._track_row(key, key == playing))
+
+    def _track_row(self, key, playing):
+        app = App.get_running_app()
+        info = app.sounds.track_info(key)
+        title = app.track_title(key)
+        if info["source"] == "synth":
+            title = f"{title} · {tr('source_synth')}"
         row = BoxLayout(size_hint_y=None, height=dp(34), spacing=dp(8))
         row.add_widget(Label(size_hint_x=None, width=dp(220)))
-        name = Label(text=track["name"], color=TEXT, font_size="14sp", halign="left", valign="middle",
-                     shorten=True, shorten_from="right")
-        name.bind(size=lambda widget, value: setattr(widget, "text_size", value))
-        row.add_widget(name)
-        delete = RoundButton(text=tr("delete"), size_hint=(None, None), size=(dp(80), dp(32)), font_size="13sp")
-        delete.bind(on_release=lambda _b: confirm(tr("confirm_delete_music", name=track["name"]),
-                                                  lambda: self._delete_music(track), tr("delete"), danger=True))
-        row.add_widget(delete)
+        button = IconButton(icon="playing" if playing else "play", text=title, primary=playing,
+                            size_hint_y=None, height=dp(34), font_size="14sp")
+        button.bind(on_release=lambda _b: self._play(key))
+        row.add_widget(button)
+        if info["source"] == "mine":                 # 自己导入的音乐可以删除
+            track_id = key.split(":", 1)[1]
+            track = next((t for t in app.music_library.tracks() if t["id"] == track_id), None)
+            if track is not None:
+                delete = RoundButton(text=tr("delete"), size_hint=(None, None), size=(dp(80), dp(34)),
+                                     font_size="13sp")
+                delete.bind(on_release=lambda _b: confirm(
+                    tr("confirm_delete_music", name=track["name"]),
+                    lambda: self._delete_music(track), tr("delete"), danger=True))
+                row.add_widget(delete)
         return row
+
+    def _play(self, key):
+        """点了歌单里的一首：音乐关着的话先打开，再放这一首。"""
+        app = App.get_running_app()
+        if not app.settings.music:
+            app.update_setting("music", True)
+            app.sounds.play_track(key)
+            self.build()                             # 让"背景音乐"那一行显示"开"
+        else:
+            app.sounds.play_track(key)
 
     def _import_music(self, paths):
         """在后台导入（可能要转换格式），导入完刷新页面。"""
@@ -225,7 +273,9 @@ class SettingsScreen(Screen):
             on_choose(chip.value, undo_choice)
 
         for value, label in options:
-            chip = Chip(text=label, group=group, size_hint_x=None, width=dp(150 if len(label) > 4 else 90))
+            chip = Chip(text=label, group=group, size_hint_x=None)
+            chip.texture_update()                                   # 先量出文字有多宽
+            chip.width = max(dp(90), chip.texture_size[0] + dp(36))  # 两边各留 18dp
             chip.value = value
             chip.state = "down" if value == current else "normal"
             chip.bind(state=on_state)

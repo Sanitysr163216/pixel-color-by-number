@@ -561,7 +561,7 @@ class PaintCanvas(StencilView):
             self._stroke_active = False
             if self._stroke_changed:
                 changed = self.game.undo()
-                self.game.redo_stack.pop()      # 这一笔不应该能"重做"回来
+                self.game.redo_stack.pop()      # 这一笔不应该能"重画"回来
                 self.refresh_cells(changed)
                 self.dispatch("on_cells_changed", changed)
 

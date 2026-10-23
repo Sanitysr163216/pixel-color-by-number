@@ -9,7 +9,7 @@ from kivy.clock import Clock
 from kivy.graphics import Color, RoundedRectangle
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivy.properties import StringProperty
+from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.image import Image
@@ -84,6 +84,15 @@ Builder.load_string("""
                 size_hint_x: None
                 width: "110dp"
                 on_state: if self.state == "down": root.tab = "works"
+            # 有隐藏的图时才出现：按下去显示隐藏的图（变淡），可以在菜单里取消隐藏
+            Chip:
+                id: show_hidden
+                text: app.tr("show_hidden", app.lang, count=root.hidden_count)
+                size_hint_x: None
+                width: "150dp"
+                opacity: 1 if (root.hidden_count or root.show_hidden) else 0
+                disabled: not (root.hidden_count or root.show_hidden)
+                on_state: root.show_hidden = self.state == "down"
             Widget:
             # 右边：图库显示分类，我的作品显示筛选（两组叠在同一个位置，只显示一组）
             FloatLayout:
@@ -218,11 +227,13 @@ class HomeScreen(Screen):
     tab = StringProperty("library")
     filter = StringProperty("all")          # 我的作品：全部 / 进行中 / 已完成
     category = StringProperty("all")        # 图库：全部 / 动物 / 美食 / 自然 / 物品
+    show_hidden = BooleanProperty(False)    # 是否也显示隐藏起来的图
+    hidden_count = NumericProperty(0)       # 当前页里隐藏了几张图
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._library_previews = {}
-        self.bind(tab=self.refresh, filter=self.refresh, category=self.refresh)
+        self.bind(tab=self.refresh, filter=self.refresh, category=self.refresh, show_hidden=self.refresh)
         App.get_running_app().bind(lang=self.refresh)
 
     def on_pre_enter(self, *_):
@@ -256,15 +267,43 @@ class HomeScreen(Screen):
 
     def _fill_library(self, grid):
         app = App.get_running_app()
-        for key in library.keys_in(self.category):
+        keys = library.keys_in(self.category)
+        self.hidden_count = sum(1 for key in keys if app.is_hidden(f"library:{key}"))
+        for key in keys:
             source = f"library:{key}"
+            hidden = app.is_hidden(source)
+            if hidden and not self.show_hidden:
+                continue
             meta = app.store.find_by_source(source)
             if meta is not None:
                 texture = _thumbnail_texture(app.store.thumbnail_path(meta["id"]))
             else:
                 texture = self._library_preview(key)
-            grid.add_widget(Card(texture, tr(f"library_{key}"), _status_text(meta),
-                                 on_open=lambda k=key: app.open_library(k)))
+            card = Card(texture, tr(f"library_{key}"), _status_text(meta),
+                        on_open=lambda k=key: app.open_library(k),
+                        on_menu=lambda k=key: self._show_library_menu(k))
+            card.opacity = 0.5 if hidden else 1          # 隐藏的图显示出来时变淡
+            grid.add_widget(card)
+
+    def _show_library_menu(self, key):
+        app = App.get_running_app()
+        source = f"library:{key}"
+        Dialog("", [
+            (tr("open_picture"), lambda: app.open_library(key), "primary"),
+            self._hide_button(source),
+            (tr("cancel"), None, "normal"),
+        ], title=tr(f"library_{key}")).open()
+
+    def _hide_button(self, key):
+        """菜单里的"隐藏 / 取消隐藏"按钮。"""
+        app = App.get_running_app()
+        if app.is_hidden(key):
+            return (tr("unhide"), lambda: self._set_hidden(key, False), "normal")
+        return (tr("hide"), lambda: self._set_hidden(key, True), "normal")
+
+    def _set_hidden(self, key, hidden):
+        App.get_running_app().set_hidden(key, hidden)
+        self.refresh()
 
     # ------------------------------------------------------------------
     # 我的作品
@@ -277,15 +316,20 @@ class HomeScreen(Screen):
             metas = [meta for meta in metas if not meta["completed"]]
         elif self.filter == "completed":
             metas = [meta for meta in metas if meta["completed"]]
+        self.hidden_count = sum(1 for meta in metas if app.is_hidden(f"project:{meta['id']}"))
+        if not self.show_hidden:
+            metas = [meta for meta in metas if not app.is_hidden(f"project:{meta['id']}")]
         if not metas:
             label = Label(text=tr("no_works"), color=TEXT_LIGHT, font_size="15sp")
             grid.add_widget(label)
             return
         for meta in metas:
             texture = _thumbnail_texture(app.store.thumbnail_path(meta["id"]))
-            grid.add_widget(Card(texture, app.project_name(meta), _status_text(meta),
-                                 on_open=lambda m=meta: app.open_project(m["id"]),
-                                 on_menu=lambda m=meta: self._show_menu(m)))
+            card = Card(texture, app.project_name(meta), _status_text(meta),
+                        on_open=lambda m=meta: app.open_project(m["id"]),
+                        on_menu=lambda m=meta: self._show_menu(m))
+            card.opacity = 0.5 if app.is_hidden(f"project:{meta['id']}") else 1
+            grid.add_widget(card)
 
     def _show_menu(self, meta):
         app = App.get_running_app()
@@ -297,6 +341,7 @@ class HomeScreen(Screen):
                                 lambda k=kind: self._export(meta, k), "normal", False))
         buttons += [
             (tr("rename"), lambda: self._rename(meta), "normal"),
+            self._hide_button(f"project:{meta['id']}"),
             (tr("restart"), lambda: confirm(tr("confirm_restart", name=name),
                                             lambda: self._restart(meta), tr("restart")), "normal"),
             (tr("delete"), lambda: confirm(tr("confirm_delete", name=name),
@@ -333,5 +378,7 @@ class HomeScreen(Screen):
         self.refresh()
 
     def _delete(self, meta):
-        App.get_running_app().store.delete(meta["id"])
+        app = App.get_running_app()
+        app.store.delete(meta["id"])
+        app.set_hidden(f"project:{meta['id']}", False)   # 删掉的作品也不用再记着隐藏了
         self.refresh()

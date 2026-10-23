@@ -100,6 +100,7 @@ Builder.load_string("""
     background_down: ""
     background_color: 0, 0, 0, 0
     color: (1, 1, 1, 1) if (self.primary or self.danger) else (0.2, 0.2, 0.25, 1)
+    disabled_color: self.color          # 不能点的时候文字颜色不变（用 opacity 让整个按钮变淡）
     font_size: "15sp"
     size_hint_y: None
     height: "40dp"

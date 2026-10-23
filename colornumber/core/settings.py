@@ -3,7 +3,7 @@
 """
 
 import json
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 
 from colornumber.core.game import BLOCK_WRONG
 
@@ -24,6 +24,8 @@ class Settings:
     music_source: str = "all"         # 曲库："all" 全部、"featured" 精选、"synth" 合成、"mine" 我的音乐
     convert_style: str = "smooth"     # 导入照片的风格："smooth" 平滑、"clear" 清晰、"classic" 经典
     ai_assist: bool = True            # 导入照片时用 AI 识别人脸和主体（只在 macOS 上有）
+    # 隐藏起来的图："library:<图的键>" 是图库里的图，"project:<作品编号>" 是我的作品
+    hidden: list = field(default_factory=list)
 
     def save(self, path):
         with open(path, "w", encoding="utf-8") as file:
@@ -37,5 +39,5 @@ class Settings:
                 data = json.load(file)
         except (OSError, ValueError):
             return cls()
-        known = {field.name for field in fields(cls)}
+        known = {item.name for item in fields(cls)}
         return cls(**{key: value for key, value in data.items() if key in known})

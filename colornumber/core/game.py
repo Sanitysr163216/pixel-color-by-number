@@ -18,14 +18,14 @@ ALLOW_WRONG = "allow"   # 填错模式：可以填上，但标为错误
 class Game:
     """一张图的填色进度。"""
 
-    def __init__(self, picture, painted=None, history=None, wrong_mode=BLOCK_WRONG):
+    def __init__(self, picture, painted=None, history=None, wrong_mode=BLOCK_WRONG, redo=None):
         self.picture = picture
         self.width = picture.width
         self.height = picture.height
         self.answer = picture.flat_numbers()
         self.painted = list(painted) if painted else [0] * len(self.answer)
         self.history = [list(stroke) for stroke in history] if history else []
-        self.redo_stack = []          # 撤销掉的笔画，可以"重做"回来（不存档）
+        self.redo_stack = [list(stroke) for stroke in redo] if redo else []   # 撤销掉的笔画，可以"重画"回来
         self.wrong_mode = wrong_mode
         self._stroke = None
 
@@ -107,7 +107,7 @@ class Game:
         """结束这一笔（比如鼠标松开时）。有改动才记进撤销记录。"""
         if self._stroke:
             self.history.append(self._stroke)
-            self.redo_stack.clear()       # 画了新的一笔，之前撤销的就不能重做了
+            self.redo_stack.clear()       # 画了新的一笔，之前撤销的就不能重画了
         self._stroke = None
 
     def _set(self, idx, value):
@@ -189,7 +189,7 @@ class Game:
         return changed
 
     def redo(self):
-        """重做最后一次撤销的笔画。返回改变了的格子列表。"""
+        """重画最后一次撤销的笔画。返回改变了的格子列表。"""
         if not self.redo_stack:
             return []
         stroke = self.redo_stack.pop()
@@ -237,11 +237,12 @@ class Game:
     # ------------------------------------------------------------------
 
     def to_dict(self):
-        return {"painted": self.painted, "history": self.history}
+        return {"painted": self.painted, "history": self.history, "redo": self.redo_stack}
 
     @classmethod
     def from_dict(cls, picture, data, wrong_mode=BLOCK_WRONG):
-        return cls(picture, data.get("painted"), data.get("history"), wrong_mode)
+        # 旧存档里没有 "redo"，那就是空的
+        return cls(picture, data.get("painted"), data.get("history"), wrong_mode, data.get("redo"))
 
 
 def cells_on_line(row0, col0, row1, col1):

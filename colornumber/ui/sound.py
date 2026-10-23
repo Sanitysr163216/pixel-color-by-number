@@ -31,6 +31,7 @@ class SoundManager:
         self.current_track = None      # 正在播放的曲子的键
         self._switching = False        # 我们自己停止音乐时，不要自动跳下一首
         self.on_track_change = None    # 换歌时通知界面
+        self.on_list_change = None     # 曲子增加或删除时通知界面
 
     # ------------------------------------------------------------------
     # 音效
@@ -79,6 +80,8 @@ class SoundManager:
         self._tracks[key] = {"path": path, "source": source, "title": title, "title_key": title_key}
         if self._music is None:
             self.update_music()
+        if self.on_list_change:
+            self.on_list_change()
 
     def remove_track(self, key):
         self._tracks.pop(key, None)
@@ -87,6 +90,13 @@ class SoundManager:
             self._stop_music()
             self.current_track = None
             self.update_music()
+        if self.on_list_change:
+            self.on_list_change()
+
+    def tracks(self):
+        """当前曲库里的曲子（键的列表）：精选在前，然后是合成音乐，最后是我的音乐。"""
+        order = {"featured": 0, "synth": 1, "mine": 2}
+        return sorted(self._eligible(), key=lambda key: order.get(self._tracks[key]["source"], 3))
 
     def track_info(self, key):
         return self._tracks.get(key)
@@ -135,10 +145,20 @@ class SoundManager:
             self._music = None
 
     def _play_next(self):
-        self._stop_music()
         key = self._next_name()
         if key is None:
+            self._stop_music()
             return
+        self._play(key)
+
+    def play_track(self, key):
+        """马上播放指定的曲子（在歌单里点了一首）。放完以后接着随机放别的。"""
+        if key in self._tracks:
+            self._order = [name for name in self._order if name != key]
+            self._play(key)
+
+    def _play(self, key):
+        self._stop_music()
         sound = SoundLoader.load(self._tracks[key]["path"])
         if sound is None:
             self._tracks.pop(key, None)                 # 打不开的文件从歌单里去掉

@@ -163,6 +163,17 @@ class ColorNumberApp(App):
         if name == "music_source":
             self.sounds.source_changed()
 
+    def is_hidden(self, key):
+        """这张图有没有被隐藏。key 是 "library:<键>" 或 "project:<编号>"。"""
+        return key in self.settings.hidden
+
+    def set_hidden(self, key, hidden):
+        """隐藏或取消隐藏一张图（只是不显示，不会删除）。"""
+        keys = [item for item in self.settings.hidden if item != key]
+        if hidden:
+            keys.append(key)
+        self.update_setting("hidden", keys)
+
     def project_name(self, meta):
         """作品显示的名字（内置图的默认名字会跟着语言变）。"""
         return project_name(meta, self.lang)
