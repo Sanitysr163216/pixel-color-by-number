@@ -4,8 +4,6 @@
 """
 
 import math
-import subprocess
-import sys
 import threading
 from pathlib import Path
 
@@ -20,7 +18,6 @@ from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.properties import BooleanProperty, ListProperty, NumericProperty, ObjectProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.screenmanager import Screen
 from kivy.uix.stencilview import StencilView
 from kivy.uix.widget import Widget
@@ -28,6 +25,7 @@ from kivy.uix.widget import Widget
 from colornumber.core import converter, vision
 from colornumber.core.render import render_state
 from colornumber.ui.common import Chip, Dialog, RoundButton, message, pil_to_texture, tr  # noqa: F401
+from colornumber.ui.pickers import pick_files
 
 WORK_LONG_SIDE = 2048     # 先把照片缩到这么大，转换更快（最多 512 格，足够了）
 DISPLAY_LONG_SIDE = 1024  # 裁剪区显示用的图
@@ -880,36 +878,9 @@ class ImportScreen(Screen):
 
 
 # ---------------------------------------------------------------------------
-# 选择照片：macOS 用系统自带的选择窗口，其他系统用 Kivy 的文件列表
+# 选择照片
 # ---------------------------------------------------------------------------
 
 def pick_photo(on_chosen):
     """让玩家选一张照片，选好后调用 on_chosen(路径)。"""
-    if sys.platform == "darwin":
-        _pick_with_macos(on_chosen)
-    else:
-        _pick_with_kivy(on_chosen)
-
-
-def _pick_with_macos(on_chosen):
-    script = f'POSIX path of (choose file of type {{"public.image"}} with prompt "{tr("pick_photo_title")}")'
-
-    def work():
-        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-        path = result.stdout.strip()
-        if result.returncode == 0 and path:
-            Clock.schedule_once(lambda _dt: on_chosen(path))
-
-    threading.Thread(target=work, daemon=True).start()
-
-
-def _pick_with_kivy(on_chosen):
-    chooser = FileChooserListView(path=str(Path.home()), filters=list(IMAGE_TYPES))
-    chooser.size_hint_y = None
-    chooser.height = dp(360)
-    dialog = Dialog("", [
-        (tr("cancel"), None, "normal"),
-        (tr("ok"), lambda: chooser.selection and on_chosen(chooser.selection[0]), "primary"),
-    ], title=tr("pick_photo_title"), content=chooser)
-    dialog.width = dp(640)
-    dialog.open()
+    pick_files(tr("pick_photo_title"), "image", IMAGE_TYPES, lambda paths: on_chosen(paths[0]))

@@ -25,9 +25,11 @@
 - **音效**（代码合成）：填色时"啵"的音效会按五声音阶往上走，填错有单独的提示音
 - **设置**：中英文切换、填错时的处理方式（不让填，或填上但标为错误）、更大的格子和颜色上限、音效和音乐的开关与音量
 
-## 下载就能玩（macOS）
+## 下载就能玩
 
 最简单的方式：下载打包好的 App，不需要安装 Python。
+
+### macOS
 
 1. 打开[最新发布页面](https://github.com/Sanitysr163216/pixel-color-by-number/releases/latest)，
    下载 `Color-Number-<版本>-macOS-arm64.zip`。
@@ -41,7 +43,20 @@
 下载版可以导出 PNG 和 GIF。导出 MP4 需要 [ffmpeg](https://ffmpeg.org)：
 用 Homebrew 安装（`brew install ffmpeg`）之后，MP4 按钮会自动出现。
 
-Intel 芯片的 Mac、Windows、Linux 请用下面"从源码运行"的方式。
+### Windows
+
+1. 打开[最新发布页面](https://github.com/Sanitysr163216/pixel-color-by-number/releases/latest)，
+   下载 `Color-Number-<版本>-Windows-x64.zip`。适用于 64 位的 Windows 10 和 11。
+2. 右键点 zip → **全部解压缩…**，选一个位置放 **Color Number** 文件夹。
+3. 打开文件夹，双击 **Color Number.exe**。第一次打开时 Windows 可能提示"Windows 已保护你的电脑"，
+   因为这个程序没有用付费证书签名。点 **更多信息 → 仍要运行** 即可，以后就能正常打开。
+   小技巧：右键 **Color Number.exe → 显示更多选项 → 发送到 → 桌面快捷方式**。
+
+Windows 版可以导出 PNG 和 GIF，可以导入 MP3、OGG、FLAC、WAV 格式的音乐。
+想导出 MP4 或导入其他格式的音乐（M4A、AAC……），请安装 [ffmpeg](https://ffmpeg.org)，
+比如在终端里运行 `winget install ffmpeg`，然后重新打开游戏。
+
+Intel 芯片的 Mac 和 Linux 请用下面"从源码运行"的方式。
 
 ## 从源码运行
 
@@ -57,6 +72,7 @@ Intel 芯片的 Mac、Windows、Linux 请用下面"从源码运行"的方式。
    ```
 
 3. **在终端里进入项目文件夹**：输入 `cd `（后面带一个空格），把解压出来的文件夹拖进终端窗口，按回车。
+   Windows 上请用开始菜单里的 **Miniforge Prompt** 当终端。
 4. **创建环境**（要下载约 1 GB，需要几分钟）：
 
    ```bash
@@ -84,6 +100,20 @@ packaging/build_macos.sh
 
 版本号写在 `colornumber/__init__.py` 里。打包好的 App 和用来上传到 GitHub Releases 的 zip 会出现在 `dist/` 文件夹。打包使用 PyInstaller，不附带 ffmpeg。
 
+### 打包 Windows 版
+
+PyInstaller 只能在 Windows 上打包 Windows 程序。GitHub Actions 的
+[`windows.yml`](.github/workflows/windows.yml) 会自动完成：运行测试、自动试玩一遍、打包出
+`Color-Number-<版本>-Windows-x64.zip`，推送 `v` 开头的 tag 时还会把它加到那个版本的下载里。
+也可以在 GitHub 网页的 **Actions → Windows build → Run workflow** 手动运行。
+
+在自己的 Windows 电脑上打包（PowerShell，需要 Python 3.12）：
+
+```powershell
+pip install -r packaging/requirements-windows.txt
+packaging/build_windows.ps1
+```
+
 ## 操作方法
 
 | 操作 | 鼠标 / 键盘 |
@@ -98,14 +128,14 @@ packaging/build_macos.sh
 | 提示 | `H` |
 | 切换工具 | `B` 画笔、`W` 魔棒、`M` 移动 |
 | 显示全图 | `0` |
-| 全屏 | `Ctrl+Cmd+F` 或 `F11` |
+| 全屏 | `Ctrl+Cmd+F` 或 `F11`（Windows 上是 `F11`） |
 
 触屏设备上：一根手指填色，两根手指缩放和移动。
 
 ## 文件存放位置
 
-- 作品存档和设置：`~/Library/Application Support/colornumber/`（macOS）
-- 导出的图片和视频：`~/Pictures/Color Number/`
+- 作品存档和设置：`~/Library/Application Support/colornumber/`（macOS），`%APPDATA%\colornumber\`（Windows）
+- 导出的图片和视频：个人文件夹里的 `Pictures/Color Number`（Windows 上是"图片"文件夹）
 
 ## 项目结构
 
@@ -135,14 +165,16 @@ colornumber/
     home_screen.py       首页：图库和作品集
     online_screen.py     在线名画页面
     icons.py             工具栏的像素小图标
+    pickers.py           选择文件的窗口（macOS、Windows 用系统自己的）
     import_screen.py     导入照片页面
     settings_screen.py   设置页面
     common.py            按钮、弹窗、字体等公共部分
     mac_gestures.py      Mac 触控板手势（捏合缩放、双指滑动）
     sound.py / confetti.py / exporting.py
-packaging/               打包 macOS App 的脚本（PyInstaller）
+packaging/               打包 macOS 和 Windows 版的脚本（PyInstaller）
+.github/workflows/       在 GitHub 的 Windows 电脑上测试和打包
 preview.py               不打开游戏，只在命令行预览照片转换的效果
-tests/                   自动测试（运行 pytest）
+tests/                   自动测试（运行 pytest）；ui_smoke.py 会真的打开游戏自动点一遍
 exercises/               Python 练习（见下文）
 ```
 

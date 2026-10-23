@@ -1,0 +1,78 @@
+# 在 GitHub 的 Windows 电脑上测试并打包游戏。
+# - 手动运行：GitHub 网页 → Actions → Windows build → Run workflow
+# - 发布新版本（推送 v 开头的 tag）时自动运行，并把 Windows 版的 zip 加到那个版本的下载里
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write          # 上传 zip 到 Releases 需要
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      # GitHub 的电脑没有显卡，用 ANGLE（通过 DirectX 的软件渲染）显示 OpenGL
+      KIVY_GL_BACKEND: angle_sdl2
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: python -m pip install -r packaging/requirements-windows.txt
+
+      - name: Run tests
+        run: python -m pytest -q tests
+
+      - name: Try the game from source
+        run: python tests/ui_smoke.py smoke-output/source
+
+      - name: Build the app
+        shell: pwsh
+        run: packaging/build_windows.ps1
+
+      - name: Start the built app
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force smoke-output/built | Out-Null
+          $app = Start-Process -FilePath "dist/Color Number/Color Number.exe" -PassThru
+          Start-Sleep -Seconds 25
+          # 截一张整个屏幕的图，看看程序窗口
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save("smoke-output/built/screen.png")
+          $log = Get-ChildItem "$env:USERPROFILE/.kivy/logs" | Sort-Object LastWriteTime | Select-Object -Last 1
+          Copy-Item $log.FullName smoke-output/built/kivy-log.txt
+          Get-Content $log.FullName
+          if ($app.HasExited) { throw "The app quit by itself (exit code $($app.ExitCode))" }
+          Stop-Process -Id $app.Id
+          if (Select-String -Path $log.FullName -Pattern "Traceback|\[CRITICAL\]") { throw "Errors in the app log" }
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: smoke-output
+
+      - name: Upload the app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Color-Number-Windows
+          path: dist/*.zip
+
+      - name: Add the zip to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" (Get-Item dist/*.zip).FullName --clobber

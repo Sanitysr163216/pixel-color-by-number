@@ -5,12 +5,13 @@
 - 我的音乐：玩家自己导入的音乐，保存在数据文件夹的 music/ 里
 
 游戏能直接播放 OGG、MP3、FLAC、WAV；其他格式（比如 iPhone 的 M4A）
-导入时用 ffmpeg 转成 OGG。
+导入时用 ffmpeg 转成 OGG（Mac 上没有 ffmpeg 时用系统自带的 afconvert）。
 """
 
 import json
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -34,10 +35,19 @@ def featured_tracks():
     return tracks
 
 
+# Windows 上运行命令时不要弹出黑色的命令行窗口
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+
 def _ffmpeg():
     """找到 ffmpeg（见 export.ffmpeg_path），找不到返回 None。"""
     from colornumber.core.export import ffmpeg_path
     return ffmpeg_path()
+
+
+def can_convert():
+    """能不能转换音乐格式：有 ffmpeg，或者是有 afconvert 的 Mac。"""
+    return _ffmpeg() is not None or shutil.which("afconvert") is not None
 
 
 class MusicLibrary:
@@ -92,7 +102,7 @@ class MusicLibrary:
             command = ["afconvert", "-f", "WAVE", "-d", "LEI16@44100", str(source), str(target)]
         else:
             raise ValueError(f"unsupported format: {source.suffix}")
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, creationflags=NO_WINDOW)
         if result.returncode != 0 or not target.exists():
             target.unlink(missing_ok=True)
             raise ValueError(result.stderr.strip() or f"cannot convert {source.suffix}")

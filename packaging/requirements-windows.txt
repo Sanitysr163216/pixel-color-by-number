@@ -1,0 +1,11 @@
+# 在 Windows 上打包时用 pip 安装的软件包（packaging/build_windows.ps1 和 GitHub Actions 用）。
+# Kivy 的 [base] 会一起装上 Windows 需要的 SDL2、GLEW 和 ANGLE。
+kivy[base]==2.3.1
+pillow
+pillow-heif
+numpy
+imageio
+imageio-ffmpeg
+certifi
+pytest
+pyinstaller

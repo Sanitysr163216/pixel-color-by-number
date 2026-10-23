@@ -63,7 +63,8 @@ def export_game(game, name, kind):
             return
         extra = []
         if sys.platform in ("darwin", "win32"):
-            extra.append((tr("show_in_finder"), lambda: show_in_finder(path), "normal"))
+            label = tr("show_in_finder" if sys.platform == "darwin" else "show_in_explorer")
+            extra.append((label, lambda: show_in_finder(path), "normal"))
         message(tr("exported_to", path=path), extra_buttons=extra)
 
     threading.Thread(target=work, daemon=True).start()

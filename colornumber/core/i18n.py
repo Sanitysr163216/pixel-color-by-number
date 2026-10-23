@@ -6,7 +6,15 @@
 tr("percent_done", "zh", percent=40) → "已完成 40%"
 """
 
+import sys
+
 LANGUAGES = ("zh", "en")
+
+# 不同系统上按键的叫法。界面文字里写 {cmd}、{alt}、{fullscreen}，显示时换成这里的名字。
+if sys.platform == "darwin":
+    KEY_NAMES = {"cmd": "Cmd", "alt": "Option", "fullscreen": "Ctrl+Cmd+F / F11"}
+else:
+    KEY_NAMES = {"cmd": "Ctrl", "alt": "Alt", "fullscreen": "F11"}
 
 STRINGS = {
     # 通用
@@ -120,29 +128,29 @@ STRINGS = {
         "zh": "点击或拖动\t填色\n"
               "B / W / M\t画笔 / 魔棒 / 移动\n"
               "[  ]\t笔刷变小 / 变大\n"
-              "Option + 点击\t吸取格子的颜色\n"
-              "Cmd+Z / Cmd+Shift+Z\t撤销 / 重做\n"
+              "{alt} + 点击\t吸取格子的颜色\n"
+              "{cmd}+Z / {cmd}+Shift+Z\t撤销 / 重做\n"
               "H\t提示一个没填的格子\n"
               "按住油漆桶\t填完整张图\n"
               "双指捏合、滚轮\t缩放\n"
-              "Cmd + 滚动、+ / -\t缩放\n"
+              "{cmd} + 滚动、+ / -\t缩放\n"
               "双指滑动、右键拖动\t移动画面\n"
               "按住空格拖动、方向键\t移动画面\n"
               "0\t显示全图\n"
-              "Ctrl+Cmd+F 或 F11\t全屏",
+              "{fullscreen}\t全屏",
         "en": "Click or drag\tPaint\n"
               "B / W / M\tBrush / Wand / Move\n"
               "[  ]\tSmaller / larger brush\n"
-              "Option + click\tPick a cell's color\n"
-              "Cmd+Z / Cmd+Shift+Z\tUndo / redo\n"
+              "{alt} + click\tPick a cell's color\n"
+              "{cmd}+Z / {cmd}+Shift+Z\tUndo / redo\n"
               "H\tHint an unfilled cell\n"
               "Hold the bucket\tFill everything\n"
               "Pinch, mouse wheel\tZoom\n"
-              "Cmd + scroll, + / -\tZoom\n"
+              "{cmd} + scroll, + / -\tZoom\n"
               "2-finger swipe, right-drag\tPan\n"
               "Space + drag, arrow keys\tPan\n"
               "0\tFit to window\n"
-              "Ctrl+Cmd+F or F11\tFull screen",
+              "{fullscreen}\tFull screen",
     },
     "picture_complete": {"zh": "完成啦！", "en": "Finished!"},
     "export_png": {"zh": "导出图片 PNG", "en": "Export PNG"},
@@ -154,6 +162,7 @@ STRINGS = {
     "exporting": {"zh": "正在导出……", "en": "Exporting…"},
     "exported_to": {"zh": "已保存到：\n{path}", "en": "Saved to:\n{path}"},
     "show_in_finder": {"zh": "在 Finder 中显示", "en": "Show in Finder"},
+    "show_in_explorer": {"zh": "在资源管理器中显示", "en": "Show in File Explorer"},
     "export_failed": {"zh": "导出失败：{error}", "en": "Export failed: {error}"},
 
     # 导入页面
@@ -259,7 +268,14 @@ def tr(key, language, **values):
     if entry is None:
         return key
     text = entry.get(language) or entry["zh"]
-    return text.format(**values) if values else text
+    return text.format_map(_Values(KEY_NAMES, **values))
+
+
+class _Values(dict):
+    """填占位符用的字典：没有给出的占位符原样保留，不会出错。"""
+
+    def __missing__(self, key):
+        return "{" + key + "}"
 
 
 def project_name(meta, language):

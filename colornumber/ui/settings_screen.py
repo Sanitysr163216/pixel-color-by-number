@@ -2,8 +2,6 @@
 设置页面：语言、填错模式、格子和颜色上限、声音。
 """
 
-import subprocess
-import sys
 import threading
 from pathlib import Path
 
@@ -18,9 +16,10 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.slider import Slider
 
 from colornumber.core.game import ALLOW_WRONG, BLOCK_WRONG
-from colornumber.core.music import AUDIO_TYPES
+from colornumber.core.music import AUDIO_TYPES, PLAYABLE, can_convert
 from colornumber.core.settings import COLOR_LIMIT_CHOICES, GRID_LIMIT_CHOICES
 from colornumber.ui.common import BACKGROUND, TEXT, TEXT_LIGHT, Chip, Dialog, RoundButton, confirm, message, tr
+from colornumber.ui.pickers import pick_files
 
 
 class SettingsScreen(Screen):
@@ -255,35 +254,11 @@ class SettingsScreen(Screen):
 
 
 # ---------------------------------------------------------------------------
-# 选择音乐文件：macOS 用系统的选择窗口（可以一次选多首），其他系统用 Kivy 的文件列表
+# 选择音乐文件
 # ---------------------------------------------------------------------------
 
 def pick_audio(on_chosen):
     """让玩家选一首或几首音乐，选好后调用 on_chosen(路径列表)。"""
-    if sys.platform == "darwin":
-        script = (f'set picked to choose file of type {{"public.audio"}} with prompt "{tr("pick_music_title")}" '
-                  'with multiple selections allowed\n'
-                  'set output to ""\n'
-                  'repeat with chosen in picked\n'
-                  '  set output to output & POSIX path of chosen & linefeed\n'
-                  'end repeat\n'
-                  'return output')
-
-        def work():
-            result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-            paths = [line for line in result.stdout.splitlines() if line.strip()]
-            if result.returncode == 0 and paths:
-                Clock.schedule_once(lambda _dt: on_chosen(paths))
-
-        threading.Thread(target=work, daemon=True).start()
-        return
-
-    from kivy.uix.filechooser import FileChooserListView
-    chooser = FileChooserListView(path=str(Path.home()), filters=list(AUDIO_TYPES), multiselect=True,
-                                  size_hint_y=None, height=dp(360))
-    dialog = Dialog("", [
-        (tr("cancel"), None, "normal"),
-        (tr("ok"), lambda: chooser.selection and on_chosen(list(chooser.selection)), "primary"),
-    ], title=tr("pick_music_title"), content=chooser)
-    dialog.width = dp(640)
-    dialog.open()
+    # 没办法转换格式时（Windows 上没装 ffmpeg），只让玩家选游戏能直接播放的格式
+    types = AUDIO_TYPES if can_convert() else tuple(f"*{suffix}" for suffix in sorted(PLAYABLE))
+    pick_files(tr("pick_music_title"), "audio", types, on_chosen, multiple=True)

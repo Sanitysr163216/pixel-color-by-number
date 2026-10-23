@@ -26,9 +26,11 @@ The interface is in English by default; Chinese is available under **Settings �
 - **Sound effects** (synthesized): fill "pops" climb a pentatonic scale as you drag; a softer sound for wrong colors
 - **Settings**: language, what happens on a wrong color (block it, or paint it and mark it wrong), larger grid and color limits, sound and music volume
 
-## Download and play (macOS)
+## Download and play
 
 The easiest way: download the ready-made app, no Python needed.
+
+### macOS
 
 1. Open the [latest release](https://github.com/Sanitysr163216/pixel-color-by-number/releases/latest)
    and download `Color-Number-<version>-macOS-arm64.zip`.
@@ -44,7 +46,21 @@ The easiest way: download the ready-made app, no Python needed.
 The downloadable app can export PNG and GIF. MP4 export needs [ffmpeg](https://ffmpeg.org);
 if you install it with Homebrew (`brew install ffmpeg`), the MP4 button appears automatically.
 
-On an Intel Mac, Windows or Linux, run from source (below).
+### Windows
+
+1. Open the [latest release](https://github.com/Sanitysr163216/pixel-color-by-number/releases/latest)
+   and download `Color-Number-<version>-Windows-x64.zip`. It runs on 64-bit Windows 10 and 11.
+2. Right-click the zip → **Extract All…**, and choose where to put the **Color Number** folder.
+3. Open the folder and double-click **Color Number.exe**. The first time, Windows SmartScreen may say
+   "Windows protected your PC", because the app is not signed with a paid certificate.
+   Click **More info → Run anyway**. From then on it opens normally.
+   Tip: right-click **Color Number.exe → Show more options → Send to → Desktop (create shortcut)**.
+
+The Windows app can export PNG and GIF, and import music in MP3, OGG, FLAC and WAV.
+For MP4 export and other music formats (M4A, AAC, …), install [ffmpeg](https://ffmpeg.org),
+for example with `winget install ffmpeg`, then restart the game.
+
+On an Intel Mac or Linux, run from source (below).
 
 ## Run from source
 
@@ -61,7 +77,8 @@ For developers, or on computers without a ready-made app. You only do steps 1–
    ```
 
 3. **Open a terminal in the project folder.** Type `cd ` (with a space), drag the unzipped folder
-   into the terminal window and press Return.
+   into the terminal window and press Return. On Windows, use **Miniforge Prompt** from the Start menu
+   as the terminal.
 4. **Create the environment** (downloads about 1 GB, takes a few minutes):
 
    ```bash
@@ -91,6 +108,20 @@ packaging/build_macos.sh
 The version number comes from `colornumber/__init__.py`. The app and a zip for GitHub Releases appear in `dist/`. The build uses PyInstaller and
 does not include ffmpeg.
 
+### Build the Windows app
+
+PyInstaller can only build a Windows app on Windows. The GitHub Actions workflow
+[`windows.yml`](.github/workflows/windows.yml) does it automatically: it runs the tests, tries the game,
+builds `Color-Number-<version>-Windows-x64.zip`, and adds it to the release when a `v…` tag is pushed.
+You can also start it by hand under **Actions → Windows build → Run workflow**.
+
+To build on your own Windows PC (in PowerShell, with Python 3.12):
+
+```powershell
+pip install -r packaging/requirements-windows.txt
+packaging/build_windows.ps1
+```
+
 ## Controls
 
 | Action | Mouse / keyboard |
@@ -105,14 +136,15 @@ does not include ffmpeg.
 | Hint | `H` |
 | Tools | `B` brush, `W` wand, `M` move |
 | Fit to window | `0` |
-| Full screen | `Ctrl+Cmd+F` or `F11` |
+| Full screen | `Ctrl+Cmd+F` or `F11` (`F11` on Windows) |
 
 On touch screens: one finger paints, two fingers zoom and pan.
 
 ## Where files are stored
 
-- Saved pictures and settings: `~/Library/Application Support/colornumber/` (macOS)
-- Exports: `~/Pictures/Color Number/`
+- Saved pictures and settings: `~/Library/Application Support/colornumber/` (macOS),
+  `%APPDATA%\colornumber\` (Windows)
+- Exports: `Pictures/Color Number` in your home folder
 
 ## Project layout
 
@@ -136,9 +168,10 @@ colornumber/
     i18n.py              English and Chinese interface text
   assets/music/          featured music (OGG) and credits.json
   ui/                    Kivy interface: screens, zoomable canvas, dialogs, sound, trackpad gestures
-packaging/               PyInstaller build script for the macOS app
+packaging/               PyInstaller build scripts for the macOS and Windows apps
+.github/workflows/       Windows test and build on GitHub Actions
 preview.py               preview a photo conversion from the command line
-tests/                   automated tests (run `pytest`)
+tests/                   automated tests (run `pytest`); ui_smoke.py clicks through the real app
 exercises/               Python exercises that go with the project (in Chinese)
 ```
 

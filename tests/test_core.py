@@ -404,3 +404,13 @@ def test_version_number():
     import re
     import colornumber
     assert re.fullmatch(r"\d+\.\d+\.\d+", colornumber.__version__)
+
+
+def test_interface_text_fills_key_names():
+    from colornumber.core import i18n
+    for key in i18n.STRINGS:
+        for language in i18n.LANGUAGES:
+            text = i18n.tr(key, language)
+            assert "{cmd}" not in text and "{alt}" not in text and "{fullscreen}" not in text, key
+    # 没有给出的占位符原样保留，不会出错
+    assert i18n.tr("progress", "en") == "{percent}%"
