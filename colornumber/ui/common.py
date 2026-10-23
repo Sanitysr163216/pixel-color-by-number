@@ -117,6 +117,7 @@ Builder.load_string("""
     background_down: ""
     background_color: 0, 0, 0, 0
     color: (1, 1, 1, 1) if self.state == "down" else (0.2, 0.2, 0.25, 1)
+    disabled_color: self.color          # 不能点的时候文字颜色不变（整个按钮会变淡）
     font_size: "14sp"
     size_hint_y: None
     height: "36dp"

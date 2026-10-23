@@ -17,6 +17,8 @@ jobs:
     env:
       # GitHub 的电脑没有显卡，用 ANGLE（通过 DirectX 的软件渲染）显示 OpenGL
       KIVY_GL_BACKEND: angle_sdl2
+      # GitHub 的电脑也没有声卡，用一个"假的"声音设备，不然打开声音会出错
+      SDL_AUDIODRIVER: dummy
       PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4

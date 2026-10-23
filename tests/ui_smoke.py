@@ -128,24 +128,26 @@ STEPS = [
 ]
 
 
-def run_steps():
-    delay = 0
-    for wait, name, action in STEPS:
-        delay += wait
+def run_step(index):
+    """做第 index 步，做完再等下一步的时间。（一步接一步，不怕第一帧很慢）"""
+    if index == len(STEPS):
+        Clock.schedule_once(lambda _dt: app.stop(), 1.0)
+        return
+    wait, name, action = STEPS[index]
 
-        def step(_dt, name=name, action=action):
-            try:
-                action()
-            except Exception:
-                failures.append(name)
-                print("FAILED", name, flush=True)
-                traceback.print_exc()
+    def step(_dt):
+        try:
+            action()
+        except Exception:
+            failures.append(name)
+            print("FAILED", name, flush=True)
+            traceback.print_exc()
+        run_step(index + 1)
 
-        Clock.schedule_once(step, delay)
-    Clock.schedule_once(lambda _dt: app.stop(), delay + 1.0)
+    Clock.schedule_once(step, wait)
 
 
-Clock.schedule_once(lambda _dt: run_steps(), 1.5)
+Clock.schedule_once(lambda _dt: run_step(0), 1.5)
 app.run()
 
 if failures:

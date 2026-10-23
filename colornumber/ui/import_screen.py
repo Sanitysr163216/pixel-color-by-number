@@ -249,17 +249,22 @@ Builder.load_string("""
                     text: app.tr("clean_stray", app.lang)
                     state: "down"
                     on_state: root.schedule_preview()
+                # AI 按钮只在有 Apple Vision 的 Mac 上显示（其他系统宽度为 0，看不见）
                 Chip:
                     id: ai
                     text: app.tr("ai_assist", app.lang)
                     disabled: not root.ai_available
-                    opacity: 1 if root.ai_available else 0.4
+                    opacity: 1 if root.ai_available else 0
+                    size_hint_x: 1 if root.ai_available else 0
+                    width: 0
                     on_state: root.on_ai_toggle()
                 Chip:
                     id: blur_background
                     text: app.tr("blur_background", app.lang)
                     disabled: not root.subject_found or ai.state != "down"
-                    opacity: 1 if (root.subject_found and ai.state == "down") else 0.4
+                    opacity: 0 if not root.ai_available else (1 if (root.subject_found and ai.state == "down") else 0.4)
+                    size_hint_x: 1 if root.ai_available else 0
+                    width: 0
                     on_state: root.schedule_preview()
             Label:
                 text: root.ai_status
