@@ -91,6 +91,33 @@ def open_test_photo():
     assert app.screens.current == "import", "import screen did not open"
 
 
+def check_window_on_screen():
+    """Windows：窗口要完整地在屏幕里，画面要铺满整个窗口（屏幕缩放 125%、150% 时也一样）。"""
+    from kivy.metrics import Metrics
+    print("WINDOW size", Window.size, "system_size", Window.system_size, "density", Metrics.density, flush=True)
+    if sys.platform != "win32":
+        return
+    import ctypes
+    from ctypes import wintypes
+    from PIL import ImageGrab
+    user32 = ctypes.windll.user32
+    hwnd = user32.GetActiveWindow() or user32.GetForegroundWindow()
+    window, client, area = wintypes.RECT(), wintypes.RECT(), wintypes.RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(window))
+    user32.GetClientRect(hwnd, ctypes.byref(client))
+    user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(area), 0)
+    print("WINDOW rect", (window.left, window.top, window.right, window.bottom),
+          "client", (client.right, client.bottom), "work area", (area.left, area.top, area.right, area.bottom),
+          "dpi", user32.GetDpiForWindow(hwnd), flush=True)
+    ImageGrab.grab().save(OUT / "00_desktop.png")
+    margin = 12          # 窗口四周有几像素看不见的边框
+    assert window.left >= area.left - margin and window.top >= area.top - margin, "window starts off screen"
+    assert window.right <= area.right + margin and window.bottom <= area.bottom + margin, "window ends off screen"
+    # 画面大小（像素）要和窗口里面的大小一样，不然画面会只占一部分或者被裁掉
+    assert abs(Window.size[0] - client.right) <= 2 and abs(Window.size[1] - client.bottom) <= 2, \
+        f"drawing size {Window.size} does not match the window {client.right}x{client.bottom}"
+
+
 def check_online():
     online = screen("online")
     print("ONLINE", repr(online.status), len(online.ids.grid.children), flush=True)
@@ -98,7 +125,8 @@ def check_online():
 
 # (等待秒数, 名字, 要做的事)
 STEPS = [
-    (1.0, "home", lambda: shot("01_home")),
+    (1.0, "window", check_window_on_screen),
+    (0.2, "home", lambda: shot("01_home")),
     (0.3, "library category", lambda: setattr(screen("home"), "category", "animals")),
     (0.5, "home animals", lambda: shot("02_home_animals")),
     (0.3, "open picture", lambda: app.open_library("cat")),

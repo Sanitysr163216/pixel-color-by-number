@@ -20,38 +20,44 @@ if sys.stderr is None:
     sys.stdout = sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 
-def windows_screen():
+def windows_work_area():
     """
-    Windows：让程序自己处理屏幕缩放（125%、150%……），文字和图片才清楚，不会被系统拉伸得模糊。
-    返回 (缩放倍数, 屏幕可用的宽, 高)，单位是像素；不是 Windows 时返回 None。
+    Windows：屏幕去掉任务栏后能用的范围 (左, 上, 宽, 高)，单位是"点"（和窗口大小的单位一样）。
+    不是 Windows 时返回 None。
+
+    注意：这里不能自己设置"DPI 感知"（SetProcessDpiAwareness）。Kivy 会让 SDL 自己处理
+    屏幕缩放（125%、150%……），而这个设置只能设一次；抢先设置会让 SDL 的换算出错，
+    窗口变得比屏幕还大，画面卡在左下角。
     """
     if sys.platform != "win32":
         return None
     import ctypes
     from ctypes import wintypes
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)     # 每个显示器分别按它的缩放显示
-    except (AttributeError, OSError):
-        ctypes.windll.user32.SetProcessDPIAware()          # 旧版 Windows
-    scale = ctypes.windll.user32.GetDpiForSystem() / 96 if hasattr(ctypes.windll.user32, "GetDpiForSystem") else 1
+    user32 = ctypes.windll.user32
     area = wintypes.RECT()
-    ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(area), 0)   # 去掉任务栏后的屏幕范围
-    return scale, area.right - area.left, area.bottom - area.top
+    user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(area), 0)   # SPI_GETWORKAREA
+    # 换算成"点"：屏幕缩放 150% 时，1 点 = 1.5 像素
+    scale = user32.GetDpiForSystem() / 96 if hasattr(user32, "GetDpiForSystem") else 1
+    return (area.left / scale, area.top / scale,
+            (area.right - area.left) / scale, (area.bottom - area.top) / scale)
 
 
 from kivy.config import Config  # noqa: E402
 
-# 这些设置必须在创建窗口之前写好。大小按 macOS 的"点"写；
-# Windows 上按屏幕缩放换算成像素，并且不超过屏幕（留出标题栏的位置）
+# 这些设置必须在创建窗口之前写好。大小的单位是"点"，屏幕缩放由 SDL 处理。
 WINDOW = {"width": 1200, "height": 800, "minimum_width": 960, "minimum_height": 660}
-screen = windows_screen()
-if screen is not None:
-    scale, screen_width, screen_height = screen
-    WINDOW = {key: round(value * scale) for key, value in WINDOW.items()}
-    WINDOW["width"] = min(WINDOW["width"], screen_width)
-    WINDOW["height"] = min(WINDOW["height"], screen_height - round(40 * scale))
+TITLE_BAR = 32      # Windows 窗口标题栏大约的高度（点）
+work_area = windows_work_area()
+if work_area is not None:
+    # 窗口不能比屏幕大，并且放在屏幕正中间（标题栏和底边都要看得见）
+    left, top, width, height = work_area
+    WINDOW["width"] = min(WINDOW["width"], int(width) - 16)
+    WINDOW["height"] = min(WINDOW["height"], int(height) - TITLE_BAR - 16)
     WINDOW["minimum_width"] = min(WINDOW["minimum_width"], WINDOW["width"])
     WINDOW["minimum_height"] = min(WINDOW["minimum_height"], WINDOW["height"])
+    Config.set("graphics", "position", "custom")
+    Config.set("graphics", "left", str(int(left + (width - WINDOW["width"]) / 2)))
+    Config.set("graphics", "top", str(int(top + TITLE_BAR + (height - TITLE_BAR - WINDOW["height"]) / 2)))
 for key, value in WINDOW.items():
     Config.set("graphics", key, str(value))
 Config.set("input", "mouse", "mouse,multitouch_on_demand")   # 右键不要出现红点

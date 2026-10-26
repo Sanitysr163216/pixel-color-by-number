@@ -59,6 +59,30 @@ jobs:
           Stop-Process -Id $app.Id
           if (Select-String -Path $log.FullName -Pattern "Traceback|\[CRITICAL\]") { throw "Errors in the app log" }
 
+      # 再用 1920×1080、屏幕缩放 150% 试一遍（笔记本电脑常见的设置）
+      - name: Switch the display to 150%
+        shell: pwsh
+        run: .github/scripts/set-display-scale.ps1 -Scale 150
+
+      - name: Try the game from source at 150%
+        run: python tests/ui_smoke.py smoke-output/source-150
+
+      - name: Start the built app at 150%
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force smoke-output/built-150 | Out-Null
+          $app = Start-Process -FilePath "dist/Color Number/Color Number.exe" -PassThru
+          Start-Sleep -Seconds 20
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          Add-Type 'using System.Runtime.InteropServices; public static class Dpi { [DllImport("user32.dll")] public static extern bool SetProcessDPIAware(); }'
+          [void][Dpi]::SetProcessDPIAware()    # 截整个屏幕的真实像素
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save("smoke-output/built-150/screen.png")
+          if ($app.HasExited) { throw "The app quit by itself (exit code $($app.ExitCode))" }
+          Stop-Process -Id $app.Id
+
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4

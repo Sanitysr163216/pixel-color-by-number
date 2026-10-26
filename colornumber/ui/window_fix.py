@@ -10,8 +10,6 @@ conda-forge 的 SDL2 其实是"sdl2-compat"（底下用的是 SDL3），它和 K
    这里给 Kivy 的 SDL 窗口套一层"保护"：全屏模式没有变化就不重复设置，设置失败也不让错误一直循环。
 """
 
-import sys
-
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import Metrics
@@ -56,8 +54,7 @@ def toggle_fullscreen():
             size = _windowed_size
             Clock.schedule_once(lambda _dt: setattr(Window, "size", size), 0.3)
     else:
-        # macOS 上读出来的 Window.size 是像素，设置时却按"点"算（视网膜屏 1 点 = 2 像素），所以先换算；
-        # Windows 上读和写都是像素
-        points = Metrics.density if sys.platform == "darwin" else 1
-        _windowed_size = tuple(round(value / points) for value in Window.size)
+        # 读出来的 Window.size 是像素，设置时却按"点"算（Mac 视网膜屏 1 点 = 2 像素，
+        # Windows 屏幕缩放 150% 时 1 点 = 1.5 像素），所以先换算
+        _windowed_size = tuple(round(value / Metrics.density) for value in Window.size)
         Window.fullscreen = "auto"
