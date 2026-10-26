@@ -27,9 +27,22 @@ The interface is in English by default; Chinese is available under **Settings â†
 - **Sound effects** (synthesized): fill "pops" climb a pentatonic scale as you drag; a softer sound for wrong colors
 - **Settings**: language, what happens on a wrong color (block it, or paint it and mark it wrong), larger grid and color limits, sound and music volume
 
+## Play on your phone (iPhone and Android)
+
+Open **https://sanitysr163216.github.io/pixel-color-by-number/** on your phone and add it to the home screen:
+
+- **iPhone / iPad**: in Safari, tap the Share button, then **Add to Home Screen**.
+- **Android**: in Chrome, open the menu and tap **Install app** (or **Add to Home screen**).
+
+It then opens like an app, works offline and keeps your progress on the phone. It is free and never expires.
+The phone version has the built-in library, painting with touch (one finger paints, two fingers zoom and pan),
+undo/redo, wand, bucket, hints, hiding pictures, and photo import with the same converter as the desktop app
+(the converter, about 15 MB, is downloaded the first time you import a photo). Finished pictures can be saved
+as PNG through the share sheet.
+
 ## Download and play
 
-The easiest way: download the ready-made app, no Python needed.
+The easiest way on a computer: download the ready-made app, no Python needed.
 
 ### macOS
 
@@ -109,6 +122,19 @@ packaging/build_macos.sh
 The version number comes from `colornumber/__init__.py`. The app and a zip for GitHub Releases appear in `dist/`. The build uses PyInstaller and
 does not include ffmpeg.
 
+### Build the web version (phones)
+
+The phone version lives in `web/` (HTML, CSS and JavaScript). `packaging/build_web.py` copies it to `site/` and
+exports the built-in pictures, interface text and icons from the Python code, so both versions share them.
+Photo conversion runs the unchanged `converter.py` in the browser with [Pyodide](https://pyodide.org).
+
+```bash
+python packaging/build_web.py
+python -m http.server --directory site 8000      # then open http://localhost:8000
+```
+
+The [`web.yml`](.github/workflows/web.yml) workflow builds it and publishes it to GitHub Pages on every push to `main`.
+
 ### Build the Windows app
 
 PyInstaller can only build a Windows app on Windows. The GitHub Actions workflow
@@ -169,7 +195,8 @@ colornumber/
     i18n.py              English and Chinese interface text
   assets/music/          featured music (OGG) and credits.json
   ui/                    Kivy interface: screens, zoomable canvas, dialogs, sound, trackpad gestures
-packaging/               PyInstaller build scripts for the macOS and Windows apps
+packaging/               build scripts: macOS and Windows apps (PyInstaller), web version
+web/                     phone/web version (PWA): HTML, CSS, JavaScript
 .github/workflows/       Windows test and build on GitHub Actions
 preview.py               preview a photo conversion from the command line
 tests/                   automated tests (run `pytest`); ui_smoke.py clicks through the real app

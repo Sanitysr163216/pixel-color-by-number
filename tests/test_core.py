@@ -435,3 +435,19 @@ def test_hidden_pictures_are_saved(tmp_path):
     settings.hidden = ["library:cat", "project:abc"]
     settings.save(path)
     assert Settings.load(path).hidden == ["library:cat", "project:abc"]
+
+
+def test_web_build_exports():
+    """网页版的导出：图库数据完整，图标能转成 SVG。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("build_web", Path(__file__).parent.parent / "packaging" / "build_web.py")
+    build_web = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build_web)
+    data = build_web.export_library()
+    assert len(data["pictures"]) == len(library.LIBRARY)
+    for picture in data["pictures"]:
+        assert len(picture["numbers"]) == picture["width"] * picture["height"]
+        assert max(picture["numbers"]) == len(picture["palette"])
+        assert picture["category"] in data["categories"]
+    svg = build_web.icon_svg(["#" * 12] + ["." * 12] * 11)
+    assert svg.count("<rect") == 1 and 'width="12"' in svg

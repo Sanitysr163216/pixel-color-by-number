@@ -1,0 +1,52 @@
+# 生成网页版（手机上玩的 PWA），发布到 GitHub Pages：
+# https://sanitysr163216.github.io/pixel-color-by-number/
+# main 分支有新的提交时自动运行，也可以在 Actions → Web version → Run workflow 手动运行。
+name: Web version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: python -m pip install pillow numpy pytest
+
+      # 只跑网页版用到的部分（完整的测试在 Windows 的工作流里跑，那里装了 Kivy）
+      - name: Run tests
+        run: python -m pytest -q tests -k "web_build or library or interface_text or picture or paint or stroke or redo"
+
+      - name: Build the web version
+        run: python packaging/build_web.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

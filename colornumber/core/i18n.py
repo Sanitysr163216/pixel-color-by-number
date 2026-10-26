@@ -263,6 +263,24 @@ STRINGS = {
         "zh": "颜色超过 36 种时，相近的颜色会很难分辨，图也更难填完。确定要开启吗？",
         "en": "With more than 36 colors, similar colors become hard to tell apart. Enable anyway?",
     },
+
+    # 网页版（手机）
+    "web_language_zh": {"zh": "中文", "en": "中文"},
+    "web_language_en": {"zh": "English", "en": "English"},
+    "web_loading_converter": {"zh": "第一次导入照片：正在下载转换工具（约 15 MB，以后不用再下载）……",
+                              "en": "First photo: downloading the converter (about 15 MB, only once)…"},
+    "web_converting": {"zh": "正在转换……", "en": "Converting…"},
+    "web_convert_failed": {"zh": "转换失败。请检查网络后再试一次，或者换一张照片。",
+                           "en": "Conversion failed. Check your internet connection and try again, or pick another photo."},
+    "web_hold_to_compare": {"zh": "按住看原图", "en": "Hold to compare"},
+    "web_saved_to_downloads": {"zh": "已保存到\"下载\"文件夹", "en": "Saved to your Downloads folder"},
+    "web_install_title": {"zh": "放到手机主屏幕", "en": "Add to your home screen"},
+    "web_install_ios": {"zh": "iPhone / iPad：在 Safari 里点\"分享\"按钮，再点\"添加到主屏幕\"。以后从主屏幕打开，没有网络也能玩。",
+                        "en": "iPhone / iPad: in Safari, tap the Share button, then \"Add to Home Screen\". "
+                              "Open it from the home screen; it also works offline."},
+    "web_install_android": {"zh": "Android：在 Chrome 里点右上角的菜单，再点\"安装应用\"或\"添加到主屏幕\"。",
+                            "en": "Android: in Chrome, open the menu (top right) and tap \"Install app\" or \"Add to Home screen\"."},
+    "web_install_button": {"zh": "安装到这台设备", "en": "Install on this device"},
 }
 
 

@@ -6,3 +6,5 @@ output/
 build/
 dist/
 smoke-output/
+site/
+.claude/launch.json

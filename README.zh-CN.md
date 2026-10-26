@@ -26,9 +26,21 @@
 - **音效**（代码合成）：填色时"啵"的音效会按五声音阶往上走，填错有单独的提示音
 - **设置**：中英文切换、填错时的处理方式（不让填，或填上但标为错误）、更大的格子和颜色上限、音效和音乐的开关与音量
 
+## 在手机上玩（iPhone 和 Android）
+
+在手机上打开 **https://sanitysr163216.github.io/pixel-color-by-number/** ，然后添加到主屏幕：
+
+- **iPhone / iPad**：在 Safari 里点"分享"按钮，再点 **添加到主屏幕**。
+- **Android**：在 Chrome 里点右上角的菜单，再点 **安装应用**（或 **添加到主屏幕**）。
+
+之后就像 App 一样从主屏幕打开，没有网络也能玩，进度保存在手机里。免费，也不会过期。
+手机版有内置图库、触摸填色（一根手指填色，两根手指缩放和移动）、撤销/重画、魔棒、油漆桶、提示、隐藏图片，
+还能导入照片，转换算法和电脑版完全一样（第一次导入照片时要下载约 15 MB 的转换工具）。
+完成的图可以通过"分享"存成 PNG。
+
 ## 下载就能玩
 
-最简单的方式：下载打包好的 App，不需要安装 Python。
+在电脑上最简单的方式：下载打包好的 App，不需要安装 Python。
 
 ### macOS
 
@@ -101,6 +113,19 @@ packaging/build_macos.sh
 
 版本号写在 `colornumber/__init__.py` 里。打包好的 App 和用来上传到 GitHub Releases 的 zip 会出现在 `dist/` 文件夹。打包使用 PyInstaller，不附带 ffmpeg。
 
+### 生成网页版（手机版）
+
+手机版的代码在 `web/` 文件夹（HTML、CSS、JavaScript）。`packaging/build_web.py` 把它复制到 `site/`，
+同时从 Python 代码导出内置图、界面文字和图标，所以两个版本用的是同一份。
+照片转换在浏览器里用 [Pyodide](https://pyodide.org) 运行原封不动的 `converter.py`。
+
+```bash
+python packaging/build_web.py
+python -m http.server --directory site 8000      # 然后打开 http://localhost:8000
+```
+
+[`web.yml`](.github/workflows/web.yml) 会在每次推送到 `main` 时自动生成并发布到 GitHub Pages。
+
 ### 打包 Windows 版
 
 PyInstaller 只能在 Windows 上打包 Windows 程序。GitHub Actions 的
@@ -172,7 +197,8 @@ colornumber/
     common.py            按钮、弹窗、字体等公共部分
     mac_gestures.py      Mac 触控板手势（捏合缩放、双指滑动）
     sound.py / confetti.py / exporting.py
-packaging/               打包 macOS 和 Windows 版的脚本（PyInstaller）
+packaging/               打包脚本：macOS 和 Windows 版（PyInstaller）、网页版
+web/                     手机版 / 网页版（PWA）：HTML、CSS、JavaScript
 .github/workflows/       在 GitHub 的 Windows 电脑上测试和打包
 preview.py               不打开游戏，只在命令行预览照片转换的效果
 tests/                   自动测试（运行 pytest）；ui_smoke.py 会真的打开游戏自动点一遍

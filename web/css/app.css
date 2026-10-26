@@ -1,0 +1,326 @@
+/* 网页版的样式：先按手机设计，屏幕大的时候（平板、电脑）多放几列。颜色和桌面版一样。 */
+
+:root {
+  --background: #f7f5f0;
+  --surface: #ffffff;
+  --text: #33333f;
+  --text-light: #80808c;
+  --accent: #4d85f2;
+  --accent-light: #dce8ff;
+  --danger: #e04d4d;
+  --button: #ebebf0;
+  --radius: 12px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--background);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body { overflow: hidden; }
+
+button, input { font: inherit; color: inherit; }
+
+[hidden] { display: none !important; }
+
+/* 每个页面占满整个屏幕，内容超出时在页面里面滚动 */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 12px) calc(var(--safe-bottom) + 8px)
+    calc(var(--safe-left) + 12px);
+  gap: 10px;
+}
+
+/* ---------------------------------------------------------------- 按钮 */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--button);
+  font-size: 15px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.button:active { filter: brightness(0.9); }
+.button:disabled { opacity: 0.4; cursor: default; filter: none; }
+.button.primary { background: var(--accent); color: #fff; }
+.button.danger { background: var(--danger); color: #fff; }
+.button.icon-only { width: 40px; padding: 0; }
+
+.icon { display: inline-flex; width: 18px; height: 18px; flex: none; }
+.icon svg { width: 100%; height: 100%; }
+
+.chip {
+  flex: none;
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 17px;
+  background: var(--button);
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chip.active { background: var(--accent); color: #fff; }
+.chip.small { min-height: 30px; padding: 0 12px; font-size: 13px; }
+
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips.scroll-x { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: none; }
+.chips.scroll-x::-webkit-scrollbar { display: none; }
+
+.text-input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d6d6de;
+  border-radius: var(--radius);
+  background: #fff;
+  font-size: 16px;          /* 16 以下 iPhone 会自动放大页面 */
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- 顶部的栏 */
+
+.bar { display: flex; align-items: center; gap: 8px; flex: none; }
+.bar h1 { flex: 1; margin: 0; font-size: 22px; }
+.bar h2 { flex: 1; margin: 0; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.percent { color: var(--accent); font-weight: 600; min-width: 42px; text-align: right; }
+.version { color: var(--text-light); font-size: 13px; }
+
+/* ---------------------------------------------------------------- 首页 */
+
+.tabs { display: flex; gap: 6px; align-items: center; flex: none; }
+.tab {
+  min-height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 18px;
+  background: var(--button);
+  font-size: 15px;
+  cursor: pointer;
+}
+.tab.active { background: var(--accent); color: #fff; }
+#home-show-hidden { margin-left: auto; }
+
+.grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  align-content: start;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.card.hidden-card { opacity: 0.5; }
+.thumbnail-box { aspect-ratio: 1; position: relative; }
+.thumbnail { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.card-row { display: flex; align-items: center; gap: 4px; }
+.card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.card-text strong, .card-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-text strong { font-size: 15px; font-weight: 500; }
+.card-text small { color: var(--text-light); font-size: 12px; }
+.more { width: 34px; height: 30px; border: none; border-radius: 10px; background: var(--button); cursor: pointer; }
+.empty { grid-column: 1 / -1; color: var(--text-light); text-align: center; margin-top: 40px; }
+
+/* ---------------------------------------------------------------- 填色页 */
+
+#play { gap: 8px; }
+.play-bar .button.primary span { font-size: 14px; }
+.board-box {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: 14px;
+  background: #e8e8ec;
+  overflow: hidden;
+}
+#board { position: absolute; inset: 0; touch-action: none; display: block; }
+
+.tools { display: flex; gap: 6px; flex: none; justify-content: center; }
+.button.tool {
+  flex: 1;
+  max-width: 96px;
+  min-height: 46px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 2px;
+  font-size: 11px;
+}
+.button.tool.active { background: var(--accent); color: #fff; }
+.tool-label { font-size: 11px; line-height: 1; }
+.long-press { position: relative; overflow: hidden; }
+.long-press::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0;
+  background: rgba(77, 133, 242, 0.35);
+}
+.long-press.pressing::after { width: 100%; transition: width var(--press-time, 600ms) linear; }
+
+.palette {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex: none;
+  padding: 4px 2px;
+  scrollbar-width: none;
+}
+.palette::-webkit-scrollbar { display: none; }
+.swatch {
+  flex: none;
+  width: 54px;
+  border: none;
+  padding: 3px;
+  border-radius: 14px;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+.swatch.selected { background: var(--accent); }
+.swatch-color {
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+.swatch.selected .swatch-color { box-shadow: 0 0 0 2px #fff; }
+.swatch.done .swatch-color { opacity: 0.45; }
+.swatch.done .swatch-number { font-size: 0; }                      /* 填完的颜色：数字换成勾 */
+.swatch.done .swatch-number::after { content: "✓"; font-size: 20px; }
+.swatch-bar { height: 4px; border-radius: 2px; background: #d8d8de; overflow: hidden; }
+.swatch-fill { display: block; height: 100%; width: 0; background: var(--accent); }
+.swatch.selected .swatch-bar { background: rgba(255, 255, 255, 0.4); }
+.swatch.selected .swatch-fill { background: #fff; }
+
+/* ---------------------------------------------------------------- 导入照片 */
+
+.import-preview {
+  flex: 1;
+  min-height: 160px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #e8e8ec;
+  overflow: hidden;
+}
+#import-preview { image-rendering: pixelated; }
+#import-original { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; visibility: hidden; }
+.import-preview.original #import-original { visibility: visible; }
+.import-preview.original #import-preview { visibility: hidden; }
+.compare { position: absolute; right: 8px; top: 8px; background: rgba(255, 255, 255, 0.9); user-select: none; -webkit-user-select: none; }
+.status { margin: 0; font-size: 13px; color: var(--text-light); min-height: 18px; flex: none; }
+.import-controls { display: flex; flex-direction: column; gap: 10px; flex: none; }
+.recommend { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--accent); }
+.recommend span { flex: 1; }
+.slider-row { display: grid; grid-template-columns: 90px 1fr 36px; align-items: center; gap: 8px; font-size: 14px; }
+.slider-row output { text-align: right; color: var(--accent); font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.start-row { display: flex; gap: 8px; }
+.start-row .text-input { flex: 1; }
+
+/* ---------------------------------------------------------------- 设置 */
+
+.settings { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-bottom: 12px; }
+.setting h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.note { margin: 4px 0; font-size: 14px; color: var(--text-light); line-height: 1.45; }
+
+/* ---------------------------------------------------------------- 弹窗和提示 */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.35);
+}
+.dialog {
+  width: min(380px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 18px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dialog h2 { margin: 0; text-align: center; font-size: 19px; }
+.dialog p { margin: 0; text-align: center; line-height: 1.45; }
+.dialog-buttons { display: flex; gap: 10px; }
+.dialog-buttons .button { flex: 1; }
+.dialog-buttons.column { flex-direction: column; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 90px);
+  z-index: 20;
+  transform: translate(-50%, 10px);
+  max-width: calc(100% - 40px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(40, 40, 50, 0.9);
+  color: #fff;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* 屏幕宽的时候（平板、电脑）：卡片大一点 */
+@media (min-width: 700px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .import-controls { max-width: 640px; width: 100%; align-self: center; }
+}
+
+/* 手机竖着拿的时候顶部的栏比较挤："提示"按钮只显示图标，给名字留位置 */
+@media (max-width: 480px) {
+  #play-hint { width: 44px; padding: 0; }
+  #play-hint span:last-child { display: none; }
+  .play-bar { gap: 4px; }
+}

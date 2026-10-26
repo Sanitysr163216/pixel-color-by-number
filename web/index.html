@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Color Number</title>
+  <meta name="description" content="A pixel-art color-by-number game.">
+  <meta name="theme-color" content="#f7f5f0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Color Number">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/app.css?v=__VERSION__">
+  <script type="module" src="js/app.js?v=__VERSION__"></script>
+</head>
+<body>
+  <!-- 首页：图库和我的作品 -->
+  <section id="home" class="screen">
+    <header class="bar">
+      <h1>Color Number</h1>
+      <button id="home-import" class="button primary" type="button" data-icon="photo"><span data-tr="import_photo"></span></button>
+      <button id="home-settings" class="button icon-only" type="button" data-icon="gear" aria-label="Settings"></button>
+    </header>
+    <nav class="tabs">
+      <button class="tab" type="button" data-tab="library" data-tr="library"></button>
+      <button class="tab" type="button" data-tab="works" data-tr="my_works"></button>
+      <button id="home-show-hidden" class="chip small" type="button" hidden></button>
+    </nav>
+    <div id="home-categories" class="chips scroll-x"></div>
+    <div id="home-filters" class="chips scroll-x" hidden></div>
+    <main id="home-grid" class="grid"></main>
+  </section>
+
+  <!-- 填色页 -->
+  <section id="play" class="screen" hidden>
+    <header class="bar play-bar">
+      <button id="play-back" class="button icon-only" type="button" data-icon="back" aria-label="Back"></button>
+      <h2 id="play-title"></h2>
+      <span id="play-percent" class="percent"></span>
+      <button id="play-undo" class="button icon-only" type="button" data-icon="undo" aria-label="Undo"></button>
+      <button id="play-redo" class="button icon-only" type="button" data-icon="redo" aria-label="Redo"></button>
+      <button id="play-hint" class="button primary" type="button" data-icon="hint"><span data-tr="hint"></span></button>
+    </header>
+    <div class="board-box"><canvas id="board"></canvas></div>
+    <div id="tools" class="tools"></div>
+    <div id="palette" class="palette"></div>
+  </section>
+
+  <!-- 导入照片 -->
+  <section id="import" class="screen" hidden>
+    <header class="bar">
+      <button id="import-back" class="button icon-only" type="button" data-icon="back" aria-label="Back"></button>
+      <h2 data-tr="import_photo"></h2>
+      <button id="import-choose" class="button" type="button" data-icon="photo"><span data-tr="choose_photo"></span></button>
+    </header>
+    <input id="photo-input" type="file" accept="image/*" hidden>
+    <div class="import-preview">
+      <canvas id="import-preview"></canvas>
+      <img id="import-original" alt="">
+      <button id="import-compare" class="chip small compare" type="button" data-tr="web_hold_to_compare"></button>
+    </div>
+    <p id="import-status" class="status"></p>
+    <div class="import-controls">
+      <div id="import-recommend" class="recommend" hidden>
+        <span></span>
+        <button id="import-use-recommended" class="chip small" type="button" data-tr="use_recommended"></button>
+      </div>
+      <label class="slider-row"><span data-tr="grid_size"></span>
+        <input id="import-grid" type="range" min="16" max="128" step="4" value="48">
+        <output id="import-grid-value">48</output></label>
+      <label class="slider-row"><span data-tr="color_count"></span>
+        <input id="import-colors" type="range" min="4" max="36" step="1" value="16">
+        <output id="import-colors-value">16</output></label>
+      <div class="chips">
+        <button class="chip active" type="button" data-style="smooth" data-tr="style_smooth"></button>
+        <button class="chip" type="button" data-style="clear" data-tr="style_clear"></button>
+        <button class="chip" type="button" data-style="classic" data-tr="style_classic"></button>
+      </div>
+      <div class="start-row">
+        <input id="import-name" class="text-input" type="text" maxlength="60" data-tr-placeholder="name">
+        <button id="import-start" class="button primary" type="button" data-tr="start_coloring" disabled></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 设置 -->
+  <section id="settings" class="screen" hidden>
+    <header class="bar">
+      <button id="settings-back" class="button icon-only" type="button" data-icon="back" aria-label="Back"></button>
+      <h2 data-tr="settings"></h2>
+      <span id="settings-version" class="version"></span>
+    </header>
+    <main id="settings-rows" class="settings"></main>
+  </section>
+</body>
+</html>
