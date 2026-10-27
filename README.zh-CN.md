@@ -9,7 +9,7 @@
 ## 功能
 
 - **内置图库**：24 张图，分成动物、美食、自然、物品四类，从橘猫、企鹅到甜甜圈、星空湖畔和灯塔
-- **在线名画**：搜索[芝加哥艺术博物馆](https://www.artic.edu)公有领域（CC0）的油画和版画，选一张直接做成填色图
+- **名画**：内置 27 幅中外名画，**不用联网**（在中国大陆也能用），来自大都会艺术博物馆（CC0）和国立故宫博物院（台北，CC BY 4.0），署名完整；也可以在线搜索[芝加哥艺术博物馆](https://www.artic.edu)公有领域（CC0）的油画和版画
 - **导入照片**（JPG / PNG / iPhone 的 HEIC 等）：裁剪，调整亮度、对比度、饱和度，自由选择格子数和颜色数，实时预览，一键恢复默认
   - **三种风格**：**平滑**（默认，颜色过渡柔和，边界圆润没有尖角）、**清晰**（锐化边缘，细节最多）、**经典**（第一版的算法）
   - **对比原图**：拖动分隔线左右对比原图和填色图，并显示"还原度"，看出调整和转换让图片变了多少
@@ -35,7 +35,7 @@
 
 之后就像 App 一样从主屏幕打开，没有网络也能玩，进度保存在手机里。免费，也不会过期。
 手机版有内置图库、触摸填色（一根手指填色，两根手指缩放和移动）、撤销/重画、魔棒、油漆桶、提示、隐藏图片，
-还能导入照片，转换算法和电脑版完全一样（第一次导入照片时要下载约 15 MB 的转换工具）。
+还能导入照片，转换算法和电脑版完全一样（第一次导入照片时要下载约 17 MB 的转换工具）。
 完成的图可以通过"分享"存成 PNG。
 
 ## 下载就能玩
@@ -179,17 +179,19 @@ colornumber/
     library.py           内置图库（字符画）和分类
     library_more.py      第二批内置图（用简单形状画出来）
     online.py            在线名画搜索（芝加哥艺术博物馆的接口）
+    artworks.py          内置名画包（不用联网）
     render.py            把进度画成图片
     export.py            导出 PNG / GIF / MP4
     audio.py             合成音效和背景音乐
     i18n.py              中英文界面文字
   assets/music/          精选音乐（OGG）和 credits.json（作者、许可证、来源）
+  assets/artworks/       内置名画和 credits.json（署名、授权、来源）
   ui/                    Kivy 界面
     app.py               管理各个页面
     paint_canvas.py      可以缩放的填色画布
     game_screen.py       填色页面
     home_screen.py       首页：图库和作品集
-    online_screen.py     在线名画页面
+    online_screen.py     名画页面（内置名画和在线搜索）
     icons.py             工具栏的像素小图标
     pickers.py           选择文件的窗口（macOS、Windows 用系统自己的）
     import_screen.py     导入照片页面
@@ -225,6 +227,44 @@ pytest
 - AI 识别：iOS 也有 Vision 框架，但要改用 kivy-ios 的 pyobjus 来调用
 - 布局：适配竖屏和小屏幕
 
+## 内置名画的来源
+
+`colornumber/assets/artworks/` 里的内置名画来自两个开放资料库：
+[大都会艺术博物馆](https://www.metmuseum.org/hubs/open-access)（公有领域，CC0）和
+[国立故宫博物院（台北）](https://digitalarchive.npm.gov.tw/opendata)（CC BY 4.0，按院方规定的格式署名）。
+游戏里的图已经缩小，部分裁掉了照片边上的色卡和空白的对页。
+`packaging/fetch_artworks.py` 负责下载和整理，游戏里显示的署名在 `credits.json` 里。
+
+| 作品 | 作者 | 署名与授权 |
+|---|---|---|
+| [神奈川冲浪里](https://www.metmuseum.org/art/collection/search/45434) | 葛饰北斋，约1830–1832年 | Under the Wave off Kanagawa (Kanagawa oki nami ura), also known as The Great Wave, from the series Thirty-six Views of Mount Fuji (Fugaku sanjūrokkei), Katsushika Hokusai, ca. 1830–32. The Metropolitan Museum of Art, H. O. Havemeyer Collection, Bequest of Mrs. H. O. Havemeyer, 1929. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [照夜白图](https://www.metmuseum.org/art/collection/search/39901) | 韩幹，唐，约750年 | Night-Shining White, Han Gan, ca. 750. The Metropolitan Museum of Art, Purchase, The Dillon Fund Gift, 1977. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [王羲之观鹅图](https://www.metmuseum.org/art/collection/search/40081) | 钱选，元，约1295年 | Wang Xizhi watching geese, Qian Xuan, ca. 1295. The Metropolitan Museum of Art, Ex coll.: C. C. Wang Family, Gift of The Dillon Fund, 1973. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [竹禽图](https://www.metmuseum.org/art/collection/search/39936) | 宋徽宗，北宋，12世纪初 | Finches and bamboo, Emperor Huizong, early 12th century. The Metropolitan Museum of Art, John M. Crawford Jr. Collection, Purchase, Douglas Dillon Gift, 1981. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [月下赏梅图](https://www.metmuseum.org/art/collection/search/44638) | 马远，南宋，13世纪初 | Viewing plum blossoms by moonlight, Ma Yuan, early 13th century. The Metropolitan Museum of Art, Gift of John M. Crawford Jr., in honor of Alfreda Murck, 1986. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [兰花图](https://www.metmuseum.org/art/collection/search/40133) | 马麟，南宋，13世纪 | Orchids, Ma Lin, second quarter of the 13th century. The Metropolitan Museum of Art, Ex coll.: C. C. Wang Family, Gift of The Dillon Fund, 1973. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [双喜图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/48?dep=P&mode=full) | 崔白，北宋，1061年 | 宋崔白雙喜圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [仙萼长春·牡丹](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/4954?dep=P&mode=full) | 郎世宁，清 | 清郎世寧畫仙萼長春 冊 牡丹。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [仙萼长春·虞美人蝴蝶花](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/4958?dep=P&mode=full) | 郎世宁，清 | 清郎世寧畫仙萼長春 冊 虞美人蝴蝶花。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [聚瑞图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/3581?dep=P&mode=full) | 郎世宁，清，1723年 | 清郎世寧聚瑞圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [岁朝图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/1227?dep=P&mode=full) | 赵昌，宋 | 宋趙昌歲朝圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [宫乐图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/5?dep=P&mode=full) | 唐人（佚名），唐 | 唐人宮樂圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [秋庭戏婴图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/34?dep=P&mode=full) | 苏汉臣，宋 | 宋蘇漢臣秋庭戲嬰圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [谿山行旅图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/1195?dep=P&mode=full) | 范宽，北宋 | 宋范寬谿山行旅圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [早春图](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/47?dep=P&mode=full) | 郭熙，北宋，1072年 | 宋郭熙早春圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [十骏犬·雪爪卢](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/13636?dep=P&mode=full) | 郎世宁，清 | 清郎世寧畫十駿犬雪爪盧 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [麦田与柏树](https://www.metmuseum.org/art/collection/search/436535) | 文森特·梵高，1889年 | Wheat Field with Cypresses, Vincent van Gogh, 1889. The Metropolitan Museum of Art, Purchase, The Annenberg Foundation Gift, 1993. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [向日葵](https://www.metmuseum.org/art/collection/search/436524) | 文森特·梵高，1887年 | Sunflowers, Vincent van Gogh, 1887. The Metropolitan Museum of Art, Rogers Fund, 1949. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [鸢尾花](https://www.metmuseum.org/art/collection/search/436528) | 文森特·梵高，1890年 | Irises, Vincent van Gogh, 1890. The Metropolitan Museum of Art, Gift of Adele R. Levy, 1958. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [戴草帽的自画像](https://www.metmuseum.org/art/collection/search/436532) | 文森特·梵高，1887年 | Self-Portrait with a Straw Hat (obverse: The Potato Peeler), Vincent van Gogh, 1887. The Metropolitan Museum of Art, Bequest of Miss Adelaide Milton de Groot (1876-1967), 1967. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [夹竹桃](https://www.metmuseum.org/art/collection/search/436530) | 文森特·梵高，1888年 | Oleanders, Vincent van Gogh, 1888. The Metropolitan Museum of Art, Gift of Mr. and Mrs. John L. Loeb, 1962. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [柏树](https://www.metmuseum.org/art/collection/search/437980) | 文森特·梵高，1889年 | Cypresses, Vincent van Gogh, 1889. The Metropolitan Museum of Art, Rogers Fund, 1949. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [持水壶的年轻女子](https://www.metmuseum.org/art/collection/search/437881) | 约翰内斯·维米尔，约1662年 | Young Woman with a Water Pitcher, Johannes Vermeer, ca. 1662. The Metropolitan Museum of Art, Marquand Collection, Gift of Henry G. Marquand, 1889. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [收割者](https://www.metmuseum.org/art/collection/search/435809) | 老彼得·勃鲁盖尔，1565年 | The Harvesters, Pieter Bruegel the Elder, 1565. The Metropolitan Museum of Art, Rogers Fund, 1919. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [舞蹈课](https://www.metmuseum.org/art/collection/search/438817) | 埃德加·德加，1874年 | The Dance Class, Edgar Degas, 1874. The Metropolitan Museum of Art, Bequest of Mrs. Harry Payne Bingham, 1986. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [玛达·普里马维西](https://www.metmuseum.org/art/collection/search/436819) | 古斯塔夫·克里姆特，1912–1913年 | Mäda Primavesi (1903–2000), Gustav Klimt, 1912–13. The Metropolitan Museum of Art, Gift of André and Clara Mertens, in memory of her mother, Jenny Pulitzer Steiner, 1964. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+| [狮子的晚餐](https://www.metmuseum.org/art/collection/search/438822) | 亨利·卢梭，约1907年 | The Repast of the Lion, Henri Rousseau (le Douanier), ca. 1907. The Metropolitan Museum of Art, Bequest of Sam A. Lewisohn, 1951. Public domain (CC0).（大都会艺术博物馆，公有领域 CC0） |
+
 ## 精选音乐的来源
 
 这 8 首音乐都来自 OpenGameArt 的 ["CC0 - Calm / Relaxing Music"](https://opengameart.org/content/cc0-calm-relaxing-music) 合集，
@@ -245,3 +285,4 @@ pytest
 
 代码使用 [MIT 许可证](LICENSE)：任何人都可以免费使用、修改和分发，只需要保留版权声明。
 `colornumber/assets/music/` 里的精选音乐是 CC0（公有领域），作者见上文。
+`colornumber/assets/artworks/` 里的内置名画是 CC0（大都会艺术博物馆）或 CC BY 4.0（国立故宫博物院，台北），署名见上文。

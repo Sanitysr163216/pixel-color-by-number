@@ -451,3 +451,23 @@ def test_web_build_exports():
         assert picture["category"] in data["categories"]
     svg = build_web.icon_svg(["#" * 12] + ["." * 12] * 11)
     assert svg.count("<rect") == 1 and 'width="12"' in svg
+
+
+def test_builtin_artworks_have_complete_credits():
+    """内置名画：每幅都有图片、中英文名字、授权和署名；台北故宫的必须用院方规定的署名格式。"""
+    from colornumber.core import artworks
+    entries = artworks.load()
+    assert len(entries) >= 20
+    for entry in entries:
+        assert artworks.image_path(entry).exists(), entry["file"]
+        for field in ("title", "artist", "date"):
+            assert set(entry[field]) == {"zh", "en"}, (entry["file"], field)
+        assert entry["title"]["zh"] and entry["title"]["en"] and entry["source"].startswith("https://")
+        if entry["museum"] == "npm":
+            assert entry["license"] == "CC BY 4.0"
+            assert entry["credit"].endswith("國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw"), entry["file"]
+        else:
+            assert entry["museum"] == "met" and entry["license"] == "CC0"
+            assert "The Metropolitan Museum of Art" in entry["credit"]
+        with Image.open(artworks.image_path(entry)) as image:
+            assert max(image.size) <= 1000

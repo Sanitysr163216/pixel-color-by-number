@@ -1,7 +1,9 @@
 // 后台线程：加载 Pyodide（浏览器里的 Python）和 numpy、Pillow，运行桌面版的 converter.py。
 // 放在后台线程里，转换时页面不会卡住。
+// Pyodide 放在我们自己的网站上（pyodide/ 文件夹，build_web.py 放进去的），不用 jsDelivr：
+// jsDelivr 在中国大陆经常连不上。
 
-const PYODIDE_URL = "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/";
+const PYODIDE_URL = new URL("../pyodide/", self.location).href;
 const PYTHON_FILES = [
   "colornumber/__init__.py",
   "colornumber/core/__init__.py",

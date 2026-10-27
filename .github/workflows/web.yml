@@ -32,7 +32,7 @@ jobs:
 
       # 只跑网页版用到的部分（完整的测试在 Windows 的工作流里跑，那里装了 Kivy）
       - name: Run tests
-        run: python -m pytest -q tests -k "web_build or library or interface_text or picture or paint or stroke or redo"
+        run: python -m pytest -q tests -k "web_build or artworks or library or interface_text or picture or paint or stroke or redo"
 
       - name: Build the web version
         run: python packaging/build_web.py

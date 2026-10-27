@@ -10,7 +10,7 @@ The interface is in English by default; Chinese is available under **Settings �
 ## Features
 
 - **Built-in library**: 24 pictures in four categories (animals, food, nature, things), from a ginger cat and a penguin to a donut, a starry lake and a lighthouse
-- **Online art**: search public-domain paintings and prints from the [Art Institute of Chicago](https://www.artic.edu) (CC0) and turn any of them into a color-by-number picture
+- **Art**: 27 built-in masterpieces, Chinese and Western, that work **offline** (also in mainland China), from The Met (CC0) and the National Palace Museum, Taipei (CC BY 4.0), with full credits; plus online search of public-domain paintings and prints from the [Art Institute of Chicago](https://www.artic.edu) (CC0)
 - **Import your own photos** (JPG, PNG, iPhone HEIC, …): crop, adjust brightness/contrast/saturation, choose the grid size and number of colors (drag the sliders or type a number), live preview that you can zoom and pan, one-click reset to defaults
   - **Three styles**: **Smooth** (default: soft color transitions, rounded shapes without jagged corners), **Sharp** (sharpened edges, most detail) and **Classic** (the first version's algorithm)
   - **Compare with the original**: drag a divider between the original photo and the pixel art, with a "similar to the original" score
@@ -37,7 +37,7 @@ Open **https://sanitysr163216.github.io/pixel-color-by-number/** on your phone a
 It then opens like an app, works offline and keeps your progress on the phone. It is free and never expires.
 The phone version has the built-in library, painting with touch (one finger paints, two fingers zoom and pan),
 undo/redo, wand, bucket, hints, hiding pictures, and photo import with the same converter as the desktop app
-(the converter, about 15 MB, is downloaded the first time you import a photo). Finished pictures can be saved
+(the converter, about 17 MB, is downloaded the first time you import a photo). Finished pictures can be saved
 as PNG through the share sheet.
 
 ## Download and play
@@ -188,12 +188,14 @@ colornumber/
     library.py           built-in pictures and categories
     library_more.py      more built-in pictures, drawn with simple shapes
     online.py            online art search (Art Institute of Chicago API)
+    artworks.py          built-in art pack (works offline)
     render.py            draws progress as an image
     export.py            PNG / GIF / MP4 export
     audio.py             synthesized sound effects and music
     music.py             music library: featured tracks and imported music
     i18n.py              English and Chinese interface text
   assets/music/          featured music (OGG) and credits.json
+  assets/artworks/       built-in artworks and credits.json
   ui/                    Kivy interface: screens, zoomable canvas, dialogs, sound, trackpad gestures
 packaging/               build scripts: macOS and Windows apps (PyInstaller), web version
 web/                     phone/web version (PWA): HTML, CSS, JavaScript
@@ -210,6 +212,45 @@ Code comments are written in Chinese: the project started as a way to learn Pyth
 ```bash
 pytest
 ```
+
+## Built-in art credits
+
+The built-in artworks in `colornumber/assets/artworks/` come from the open-access collections of
+[The Metropolitan Museum of Art](https://www.metmuseum.org/hubs/open-access) (public domain, CC0) and the
+[National Palace Museum, Taipei](https://digitalarchive.npm.gov.tw/opendata) (CC BY 4.0, credited in the
+museum's required format). The game's copies are resized; some are cropped to remove the photographer's color
+charts and blank album pages. `packaging/fetch_artworks.py` downloads and prepares them, and
+`credits.json` holds the credits shown in the game.
+
+| Artwork | Artist | Credit and license |
+|---|---|---|
+| [Under the Wave off Kanagawa](https://www.metmuseum.org/art/collection/search/45434) | Katsushika Hokusai, ca. 1830–32 | Under the Wave off Kanagawa (Kanagawa oki nami ura), also known as The Great Wave, from the series Thirty-six Views of Mount Fuji (Fugaku sanjūrokkei), Katsushika Hokusai, ca. 1830–32. The Metropolitan Museum of Art, H. O. Havemeyer Collection, Bequest of Mrs. H. O. Havemeyer, 1929. Public domain (CC0). |
+| [Night-Shining White](https://www.metmuseum.org/art/collection/search/39901) | Han Gan, ca. 750 | Night-Shining White, Han Gan, ca. 750. The Metropolitan Museum of Art, Purchase, The Dillon Fund Gift, 1977. Public domain (CC0). |
+| [Wang Xizhi watching geese](https://www.metmuseum.org/art/collection/search/40081) | Qian Xuan, ca. 1295 | Wang Xizhi watching geese, Qian Xuan, ca. 1295. The Metropolitan Museum of Art, Ex coll.: C. C. Wang Family, Gift of The Dillon Fund, 1973. Public domain (CC0). |
+| [Finches and bamboo](https://www.metmuseum.org/art/collection/search/39936) | Emperor Huizong, early 12th century | Finches and bamboo, Emperor Huizong, early 12th century. The Metropolitan Museum of Art, John M. Crawford Jr. Collection, Purchase, Douglas Dillon Gift, 1981. Public domain (CC0). |
+| [Viewing plum blossoms by moonlight](https://www.metmuseum.org/art/collection/search/44638) | Ma Yuan, early 13th century | Viewing plum blossoms by moonlight, Ma Yuan, early 13th century. The Metropolitan Museum of Art, Gift of John M. Crawford Jr., in honor of Alfreda Murck, 1986. Public domain (CC0). |
+| [Orchids](https://www.metmuseum.org/art/collection/search/40133) | Ma Lin, second quarter of the 13th century | Orchids, Ma Lin, second quarter of the 13th century. The Metropolitan Museum of Art, Ex coll.: C. C. Wang Family, Gift of The Dillon Fund, 1973. Public domain (CC0). |
+| [Magpies and Hare](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/48?dep=P&mode=full) | Cui Bo, 1061 | 宋崔白雙喜圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Peonies, from Immortal Blossoms in an Everlasting Spring](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/4954?dep=P&mode=full) | Giuseppe Castiglione (Lang Shining), Qing dynasty | 清郎世寧畫仙萼長春 冊 牡丹。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Poppies and Irises, from Immortal Blossoms in an Everlasting Spring](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/4958?dep=P&mode=full) | Giuseppe Castiglione (Lang Shining), Qing dynasty | 清郎世寧畫仙萼長春 冊 虞美人蝴蝶花。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Assembled Auspiciousness](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/3581?dep=P&mode=full) | Giuseppe Castiglione (Lang Shining), 1723 | 清郎世寧聚瑞圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Picture for the New Year](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/1227?dep=P&mode=full) | Zhao Chang, Song dynasty | 宋趙昌歲朝圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Palace Concert](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/5?dep=P&mode=full) | Anonymous (Tang dynasty), Tang dynasty | 唐人宮樂圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Children at Play in an Autumn Garden](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/34?dep=P&mode=full) | Su Hanchen, Song dynasty | 宋蘇漢臣秋庭戲嬰圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Travelers Among Mountains and Streams](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/1195?dep=P&mode=full) | Fan Kuan, Song dynasty | 宋范寬谿山行旅圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Early Spring](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/47?dep=P&mode=full) | Guo Xi, 1072 | 宋郭熙早春圖 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Xuezhualu, from Ten Fine Hounds](https://digitalarchive.npm.gov.tw/opendata/Pub/Detail/13636?dep=P&mode=full) | Giuseppe Castiglione (Lang Shining), Qing dynasty | 清郎世寧畫十駿犬雪爪盧 軸。國立故宮博物院，台北，CC BY 4.0 @ www.npm.gov.tw |
+| [Wheat Field with Cypresses](https://www.metmuseum.org/art/collection/search/436535) | Vincent van Gogh, 1889 | Wheat Field with Cypresses, Vincent van Gogh, 1889. The Metropolitan Museum of Art, Purchase, The Annenberg Foundation Gift, 1993. Public domain (CC0). |
+| [Sunflowers](https://www.metmuseum.org/art/collection/search/436524) | Vincent van Gogh, 1887 | Sunflowers, Vincent van Gogh, 1887. The Metropolitan Museum of Art, Rogers Fund, 1949. Public domain (CC0). |
+| [Irises](https://www.metmuseum.org/art/collection/search/436528) | Vincent van Gogh, 1890 | Irises, Vincent van Gogh, 1890. The Metropolitan Museum of Art, Gift of Adele R. Levy, 1958. Public domain (CC0). |
+| [Self-Portrait with a Straw Hat](https://www.metmuseum.org/art/collection/search/436532) | Vincent van Gogh, 1887 | Self-Portrait with a Straw Hat (obverse: The Potato Peeler), Vincent van Gogh, 1887. The Metropolitan Museum of Art, Bequest of Miss Adelaide Milton de Groot (1876-1967), 1967. Public domain (CC0). |
+| [Oleanders](https://www.metmuseum.org/art/collection/search/436530) | Vincent van Gogh, 1888 | Oleanders, Vincent van Gogh, 1888. The Metropolitan Museum of Art, Gift of Mr. and Mrs. John L. Loeb, 1962. Public domain (CC0). |
+| [Cypresses](https://www.metmuseum.org/art/collection/search/437980) | Vincent van Gogh, 1889 | Cypresses, Vincent van Gogh, 1889. The Metropolitan Museum of Art, Rogers Fund, 1949. Public domain (CC0). |
+| [Young Woman with a Water Pitcher](https://www.metmuseum.org/art/collection/search/437881) | Johannes Vermeer, ca. 1662 | Young Woman with a Water Pitcher, Johannes Vermeer, ca. 1662. The Metropolitan Museum of Art, Marquand Collection, Gift of Henry G. Marquand, 1889. Public domain (CC0). |
+| [The Harvesters](https://www.metmuseum.org/art/collection/search/435809) | Pieter Bruegel the Elder, 1565 | The Harvesters, Pieter Bruegel the Elder, 1565. The Metropolitan Museum of Art, Rogers Fund, 1919. Public domain (CC0). |
+| [The Dance Class](https://www.metmuseum.org/art/collection/search/438817) | Edgar Degas, 1874 | The Dance Class, Edgar Degas, 1874. The Metropolitan Museum of Art, Bequest of Mrs. Harry Payne Bingham, 1986. Public domain (CC0). |
+| [Mäda Primavesi](https://www.metmuseum.org/art/collection/search/436819) | Gustav Klimt, 1912–13 | Mäda Primavesi (1903–2000), Gustav Klimt, 1912–13. The Metropolitan Museum of Art, Gift of André and Clara Mertens, in memory of her mother, Jenny Pulitzer Steiner, 1964. Public domain (CC0). |
+| [The Repast of the Lion](https://www.metmuseum.org/art/collection/search/438822) | Henri Rousseau (le Douanier), ca. 1907 | The Repast of the Lion, Henri Rousseau (le Douanier), ca. 1907. The Metropolitan Museum of Art, Bequest of Sam A. Lewisohn, 1951. Public domain (CC0). |
 
 ## Music credits
 
@@ -231,4 +272,5 @@ released under CC0 (public domain). They were converted to loudness-matched OGG 
 ## License
 
 The code is released under the [MIT License](LICENSE). The featured music in `colornumber/assets/music/`
-is CC0 (public domain); see the credits above.
+is CC0 (public domain); see the credits above. The built-in artworks in `colornumber/assets/artworks/` are CC0
+(The Met) or CC BY 4.0 (National Palace Museum, Taipei); see the built-in art credits above.

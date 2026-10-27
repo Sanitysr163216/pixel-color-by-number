@@ -85,7 +85,20 @@ STRINGS = {
     "category_things": {"zh": "物品", "en": "Things"},
 
     # 在线图库
-    "online_gallery": {"zh": "在线名画", "en": "Online Art"},
+    "online_gallery": {"zh": "名画", "en": "Art"},
+    "art_builtin": {"zh": "内置名画（不用联网）", "en": "Built-in (offline)"},
+    "art_builtin_credit": {"zh": "内置名画来自大都会艺术博物馆（CC0）和国立故宫博物院（台北，CC BY 4.0）。点一幅画可以看完整的署名。",
+                           "en": "Built-in art from The Metropolitan Museum of Art (CC0) and the National Palace Museum, "
+                                 "Taipei (CC BY 4.0). Tap a picture for its full credit."},
+    "art_license_met": {"zh": "大都会艺术博物馆开放资料，公有领域（CC0），可以自由使用。",
+                        "en": "The Met Open Access, public domain (CC0), free to use."},
+    "art_license_npm": {"zh": "国立故宫博物院开放资料，CC BY 4.0：可以自由使用，但要像上面这样署名。",
+                        "en": "National Palace Museum Open Data, CC BY 4.0: free to use with the credit line above."},
+    "art_east": {"zh": "东方", "en": "East"},
+    "art_west": {"zh": "西方", "en": "West"},
+    "art_source": {"zh": "在博物馆网站上查看", "en": "View on the museum's website"},
+    "art_changes": {"zh": "游戏里的图已缩小（部分裁掉了照片边上的色卡），做成填色图时会再转换成像素画。",
+                    "en": "The game's copy is resized (some are cropped to remove color charts) and is converted to pixel art."},
     "online_search_hint": {"zh": "用英文搜索，比如 cat、flowers、mountain",
                            "en": "Search, e.g. cat, flowers, mountain"},
     "search": {"zh": "搜索", "en": "Search"},
@@ -267,8 +280,8 @@ STRINGS = {
     # 网页版（手机）
     "web_language_zh": {"zh": "中文", "en": "中文"},
     "web_language_en": {"zh": "English", "en": "English"},
-    "web_loading_converter": {"zh": "第一次导入照片：正在下载转换工具（约 15 MB，以后不用再下载）……",
-                              "en": "First photo: downloading the converter (about 15 MB, only once)…"},
+    "web_loading_converter": {"zh": "第一次导入照片：正在下载转换工具（约 17 MB，以后不用再下载）……",
+                              "en": "First photo: downloading the converter (about 17 MB, only once)…"},
     "web_converting": {"zh": "正在转换……", "en": "Converting…"},
     "web_convert_failed": {"zh": "转换失败。请检查网络后再试一次，或者换一张照片。",
                            "en": "Conversion failed. Check your internet connection and try again, or pick another photo."},

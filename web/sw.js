@@ -3,7 +3,7 @@
 
 const VERSION = "__VERSION__";
 const APP_CACHE = `colornumber-${VERSION}`;
-const PYODIDE_CACHE = "pyodide-0.27.7";       // 照片转换用的 Python，第一次导入照片时才下载
+const PYODIDE_CACHE = "pyodide-__PYODIDE_VERSION__";   // 照片转换用的 Python，第一次导入照片时才下载，换版本也不用重新下载
 const FILES = "__FILES__";                     // build_web.py 会换成所有文件的列表
 
 self.addEventListener("install", (event) => {
@@ -24,8 +24,8 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  // Pyodide：先看缓存，没有再下载并存起来
-  if (url.hostname === "cdn.jsdelivr.net" && url.pathname.startsWith("/pyodide/")) {
+  // Pyodide（文件名里带着版本号，内容不会变）：先看缓存，没有再下载并存起来
+  if (url.origin === location.origin && url.pathname.includes("/pyodide/")) {
     event.respondWith(caches.open(PYODIDE_CACHE).then(async (cache) => {
       const cached = await cache.match(request);
       if (cached) return cached;

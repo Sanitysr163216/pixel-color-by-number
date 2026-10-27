@@ -1,7 +1,7 @@
-// 网页版的入口：读取数据、切换页面、首页（图库和我的作品）、设置。
+// 网页版的入口：读取数据、切换页面、首页（图库、我的作品、名画）、设置。
 
 import { greyOf } from "./game.js";
-import { loadStrings, setLanguage, tr, translatePage } from "./i18n.js";
+import { getLanguage, loadStrings, setLanguage, tr, translatePage } from "./i18n.js";
 import { ImportScreen } from "./importer.js";
 import { exportPicture, PlayScreen } from "./play.js";
 import * as sound from "./sound.js";
@@ -9,7 +9,7 @@ import {
   askToKeepData, deleteProject, findBySource, getProject, listProjects, loadSettings, newProject,
   saveProject, saveSettings,
 } from "./store.js";
-import { button, confirmDialog, dialog, drawThumbnail, el, icon, loadIcons } from "./ui.js";
+import { button, confirmDialog, dialog, drawThumbnail, el, icon, loadIcons, toast } from "./ui.js";
 
 const VERSION = "__VERSION__";        // build_web.py 会换成真正的版本号
 
@@ -20,11 +20,13 @@ class App {
     this.tab = "library";
     this.category = "all";
     this.filter = "all";
+    this.artCategory = "all";
+    this.artworks = [];
     this.showHidden = false;
   }
 
   async start() {
-    await Promise.all([loadStrings(), loadIcons(), this.loadLibrary()]);
+    await Promise.all([loadStrings(), loadIcons(), this.loadLibrary(), this.loadArtworks()]);
     setLanguage(this.settings.language);
     sound.setSoundEnabled(this.settings.sound);
     document.addEventListener("pointerdown", () => sound.unlockAudio(), { capture: true });
@@ -44,6 +46,16 @@ class App {
     const response = await fetch("data/library.json");
     this.library = await response.json();
     for (const picture of this.library.pictures) picture.greys = picture.palette.map(greyOf);
+  }
+
+  // 内置名画（来自 colornumber/core/artworks.py）：不用联网，在中国大陆也能用
+  async loadArtworks() {
+    try {
+      const response = await fetch("data/artworks.json");
+      this.artworks = await response.json();
+    } catch {
+      this.artworks = [];
+    }
   }
 
   // 页面里写 data-icon="名字" 的地方放上像素图标
@@ -100,6 +112,16 @@ class App {
         },
       }));
     }
+    const artCategories = home.querySelector("#home-art-categories");
+    for (const [name, key] of [["all", "category_all"], ["east", "art_east"], ["west", "art_west"]]) {
+      artCategories.append(el("button", {
+        class: "chip", type: "button", "data-art-category": name, "data-tr": key,
+        onclick: () => {
+          this.artCategory = name;
+          this.refreshHome();
+        },
+      }));
+    }
     const filters = home.querySelector("#home-filters");
     for (const [name, key] of [["all", "filter_all"], ["in_progress", "filter_in_progress"], ["completed", "filter_completed"]]) {
       filters.append(el("button", {
@@ -122,8 +144,13 @@ class App {
     for (const tab of home.querySelectorAll("[data-tab]")) tab.classList.toggle("active", tab.dataset.tab === this.tab);
     for (const chip of home.querySelectorAll("[data-category]")) chip.classList.toggle("active", chip.dataset.category === this.category);
     for (const chip of home.querySelectorAll("[data-filter]")) chip.classList.toggle("active", chip.dataset.filter === this.filter);
+    for (const chip of home.querySelectorAll("[data-art-category]")) {
+      chip.classList.toggle("active", chip.dataset.artCategory === this.artCategory);
+    }
     home.querySelector("#home-categories").hidden = this.tab !== "library";
     home.querySelector("#home-filters").hidden = this.tab !== "works";
+    home.querySelector("#home-art-categories").hidden = this.tab !== "art";
+    home.querySelector("#home-art-credit").hidden = this.tab !== "art";
 
     const projects = await listProjects();
     const grid = home.querySelector("#home-grid");
@@ -143,6 +170,11 @@ class App {
           onOpen: () => this.openLibrary(picture),
           onMenu: () => this.libraryMenu(picture, key),
         }));
+      }
+    } else if (this.tab === "art") {
+      for (const entry of this.artworks) {
+        if (this.artCategory !== "all" && entry.category !== this.artCategory) continue;
+        grid.append(this.artCard(entry));
       }
     } else {
       let shown = projects;
@@ -185,6 +217,56 @@ class App {
     ]);
     card.addEventListener("click", onOpen);
     return card;
+  }
+
+  // ---------------------------------------------------------------- 名画
+
+  artText(entry, field) {
+    return entry[field][getLanguage()] || entry[field].en;
+  }
+
+  artCard(entry) {
+    const details = [this.artText(entry, "artist"), this.artText(entry, "date")].filter(Boolean).join(", ");
+    const card = el("div", { class: "card", role: "button", tabindex: "0" }, [
+      el("div", { class: "thumbnail-box" }, [
+        el("img", { class: "thumbnail photo", src: `art/thumbs/${entry.file}`, alt: "", loading: "lazy" }),
+      ]),
+      el("div", { class: "card-row" }, [
+        el("div", { class: "card-text" }, [el("strong", { text: this.artText(entry, "title") }), el("small", { text: details })]),
+      ]),
+    ]);
+    card.addEventListener("click", () => this.artDialog(entry));
+    return card;
+  }
+
+  // 显示完整的署名（台北故宫的画必须照院方的格式署名），然后做成填色图
+  artDialog(entry) {
+    const title = this.artText(entry, "title");
+    const details = [this.artText(entry, "artist"), this.artText(entry, "date")].filter(Boolean).join(", ");
+    const credit = el("div", { class: "credit" }, [
+      el("p", { class: "credit", text: entry.credit }),
+      el("p", { class: "credit", text: tr(`art_license_${entry.museum}`) }),
+      el("p", { class: "credit", text: tr("art_changes") }),
+      el("p", { class: "credit" }, [el("a", { href: entry.source, target: "_blank", rel: "noopener", text: tr("art_source") })]),
+    ]);
+    dialog({
+      title, text: details, content: credit,
+      buttons: [
+        { label: tr("cancel") },
+        { label: tr("online_use"), kind: "primary", action: () => this.importArtwork(entry, title) },
+      ],
+    });
+  }
+
+  async importArtwork(entry, title) {
+    try {
+      const response = await fetch(`art/${entry.file}`);
+      if (!response.ok) throw new Error(response.statusText);
+      const file = new File([await response.blob()], `${title}.jpg`, { type: "image/jpeg" });
+      this.importer.load(file);
+    } catch {
+      toast(tr("online_error"));
+    }
   }
 
   async openLibrary(picture) {
