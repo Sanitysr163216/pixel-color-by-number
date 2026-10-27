@@ -88,14 +88,14 @@ export class Hud {
     drawText(fb, count, cx, 205, bars > 0 ? UI.yellow : UI.dim, 2, UI.shadow);
   }
 
+  /** "N HITS" on the attacker's side of the screen; stays 2 seconds after the combo ends. */
   private combo(fb: Framebuffer, game: Game): void {
-    for (const f of game.world.fighters) {
-      if (f.combo.hits < 2 || f.state !== 'hitstun') continue;
-      const text = `${f.combo.hits} HITS`;
-      // Shown on the attacker's side.
-      const x = f.index === 1 ? 10 : SCREEN_W - 10 - textWidth(text, 2);
-      drawText(fb, text, x, 52, UI.yellow, 2, UI.shadow);
-    }
+    game.comboShown.forEach((shown, attacker) => {
+      if (!shown) return;
+      const text = `${shown.hits} HITS`;
+      const x = attacker === 0 ? 8 : SCREEN_W - 8 - textWidth(text, 2);
+      drawText(fb, text, x, 66, shown.endedAt === null ? UI.yellow : UI.yellowDark, 2, UI.shadow);
+    });
   }
 }
 

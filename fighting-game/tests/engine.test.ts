@@ -21,7 +21,7 @@ describe('move data checks', () => {
   it('fills in defaults by strength', () => {
     const m = compileMove('t', base);
     expect(m.total).toBe(10);
-    expect(m.hitstop).toBe(7);
+    expect(m.hitstop).toBeNull(); // comes from the character's hitstop table
     expect(m.meterOnHit).toBe(3);
     expect(m.hitPhases[0]).toMatchObject({ from: 4, to: 5 });
   });

@@ -58,17 +58,41 @@ describe('startup / active / recovery', () => {
     expect(p1.moveFrame).toBe(1);
   });
 
-  it('a press up to 3 frames before the fighter is free is buffered', () => {
+  it('normals are buffered 1 frame: pressed on the last frame of a move, they come out next frame', () => {
     const w = newWorld(250);
     const p1 = w.fighters[0];
     const lp = shoto.normals['5LP']!;
     play(w, [inp(5, ['LP'])]);
-    hold(w, lp.total - 4);
-    play(w, [inp(5, ['MP'])]); // pressed 3 frames before the LP ends
-    hold(w, 2);
+    hold(w, lp.total - 2);
+    play(w, [inp(5, ['MP'])]); // the LP's last frame
     expect(p1.move!.id).toBe('5LP');
     hold(w, 1);
     expect(p1.move!.id).toBe('5MP');
+    expect(p1.moveFrame).toBe(1);
+  });
+
+  it('a normal pressed 2 frames early is lost', () => {
+    const w = newWorld(250);
+    const p1 = w.fighters[0];
+    const lp = shoto.normals['5LP']!;
+    play(w, [inp(5, ['LP'])]);
+    hold(w, lp.total - 3);
+    play(w, [inp(5, ['MP'])]);
+    hold(w, 3);
+    expect(p1.state).toBe('ground');
+  });
+
+  it('specials are buffered 3 frames', () => {
+    const w = newWorld(250);
+    const p1 = w.fighters[0];
+    const lp = shoto.normals['5LP']!;
+    play(w, [inp(5, ['LP'])]);
+    hold(w, lp.total - 7);
+    play(w, [inp(4), inp(2), inp(1), inp(6, ['LP'])]); // the punch lands 3 frames before the LP ends
+    hold(w, 2);
+    expect(p1.move!.id).toBe('5LP');
+    hold(w, 1);
+    expect(p1.move!.id).toBe('leopard.L');
     expect(p1.moveFrame).toBe(1);
   });
 

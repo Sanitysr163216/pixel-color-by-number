@@ -67,6 +67,12 @@ function stateTag(game: Game, f: Fighter): string {
       return `LANDING ${f.stun + 1}`;
     case 'jumpSquat':
       return 'PRE-JUMP';
+    case 'dash':
+      return 'DASH';
+    case 'jump':
+      return f.hop ? 'BACK HOP' : '';
+    case 'ground':
+      return f.guarding ? 'GUARD' : '';
     default:
       return '';
   }
@@ -100,9 +106,9 @@ export function drawTrainingInfo(fb: Framebuffer, game: Game): void {
 
   // Input display in numpad notation (6 = forward), newest at the top.
   const log = game.inputLog[0];
-  for (let i = 0; i < log.length && i < 13; i++) {
+  for (let i = 0; i < log.length && i < 11; i++) {
     const e = log[i];
-    const y = 66 + i * 9;
+    const y = 96 + i * 9;
     drawText(fb, String(e.dir), 8, y, e.dir === 5 ? UI.dim : UI.text, 1, UI.shadow);
     if (e.buttons) drawText(fb, e.buttons, 18, y, UI.yellow, 1, UI.shadow);
     const frames = String(Math.min(e.frames, 99));

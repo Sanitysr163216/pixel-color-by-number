@@ -43,8 +43,8 @@ export const standMP: MoveData = {
   hurtboxes: [{ frames: [7, 13], boxes: [{ x: 10, y: 54, w: 26, h: 14 }] }], // the arms
 };
 
-/** High hitting donkey kick (whiffs on crouching opponents). */
-export const standHP: MoveData = {
+/** Standing HK: high hitting donkey kick (whiffs on crouching opponents). */
+export const standHK: MoveData = {
   name: 'Donkey Kick',
   kind: 'normal',
   strength: 'H',
@@ -100,8 +100,9 @@ export const crouchHK: MoveData = {
 // ---------------------------------------------------------------- command normals
 
 /**
- * Forward + MP: moves the character forward, slightly disjointed hitbox forward (the hitbox reaches
- * past the arm's hurtbox), and lowers the character's hurtbox.
+ * Forward + MP: moves the character forward, lowers the character's hurtbox and hits far, with a slightly
+ * disjointed hitbox (it reaches past the arm's hurtbox). Like Yun's lunge in Third Strike: both arms
+ * extended in opposite directions.
  */
 export const forwardMP: MoveData = {
   name: 'Lunging Palm',
@@ -118,11 +119,11 @@ export const forwardMP: MoveData = {
     { frame: 1, forward: 2 },
     { frame: 9, forward: 0 },
   ],
-  hitboxes: [{ boxes: [{ x: 30, y: 44, w: 20, h: 14 }] }],
+  hitboxes: [{ boxes: [{ x: 26, y: 44, w: 38, h: 14 }] }],
   hurtboxes: [
     // Lowered body: 64 px tall instead of 96, so high attacks go over it.
     { frames: [3, 22], replace: true, boxes: [{ x: -14, y: 0, w: 30, h: 36 }, { x: -4, y: 36, w: 28, h: 28 }] },
-    { frames: [9, 14], boxes: [{ x: 12, y: 46, w: 18, h: 10 }] }, // the arm, shorter than the hitbox
+    { frames: [9, 14], boxes: [{ x: 12, y: 46, w: 36, h: 10 }] }, // the front arm, 16 px shorter than the hitbox
   ],
 };
 

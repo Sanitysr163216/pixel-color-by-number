@@ -1,6 +1,11 @@
 import { CHARACTERS } from '../characters';
+import type { CompiledCharacter } from '../characters/compile';
 import { NEUTRAL, buttonsIn, numpad, type RawInput } from '../input/buttons';
+import { isStunned } from '../sim/fighter';
 import { METER_MAX, World, type WorldEvent } from '../sim/world';
+
+/** How long the combo counter stays after a combo ends: 2 seconds. */
+const COMBO_SHOWN_FOR = 120;
 
 export type Mode = 'training' | 'versus';
 export type DummyStance = 'stand' | 'crouch' | 'jump';
@@ -17,12 +22,18 @@ export interface Effect {
   start: number;
 }
 
+/** A combo counter on screen. endedAt: the frame the defender left hit stun (null while it goes on). */
+export interface ComboShown {
+  hits: number;
+  endedAt: number | null;
+}
+
 /**
  * Everything around the fight itself: training mode (dummy, health refill, pause and frame step),
  * versus mode (KO and next round), the input display and hit sparks.
  */
 export class Game {
-  readonly world = new World([CHARACTERS.shoto, CHARACTERS.shoto]);
+  readonly world: World;
   mode: Mode = 'training';
   paused = false;
   showBoxes = true;
@@ -32,12 +43,15 @@ export class Game {
   fullMeter = false;
   readonly inputLog: [InputLogEntry[], InputLogEntry[]] = [[], []];
   readonly effects: Effect[] = [];
+  /** Combo counters by attacker (0 = player 1's combo, shown on player 1's side). */
+  readonly comboShown: [ComboShown | null, ComboShown | null] = [null, null];
   banner: { text: string; until: number } | null = null;
   private stepOnce = false;
   private koAt = 0;
   private readonly calmFor = [0, 0];
 
-  constructor() {
+  constructor(chars: [CompiledCharacter, CompiledCharacter] = [CHARACTERS.shoto, CHARACTERS.shoto]) {
+    this.world = new World(chars);
     this.setMode('training');
   }
 
@@ -51,6 +65,7 @@ export class Game {
   reset(): void {
     this.world.resetRound();
     this.effects.length = 0;
+    this.comboShown[0] = this.comboShown[1] = null;
     this.koAt = 0;
   }
 
@@ -83,9 +98,30 @@ export class Game {
     for (const event of w.events) this.effects.push({ event, start: w.frame });
     while (this.effects.length && w.frame - this.effects[0].start > 40) this.effects.shift();
 
+    this.trackCombos();
     if (training) this.trainingUpkeep();
     else this.versusUpkeep();
     return true;
+  }
+
+  /**
+   * The combo counter counts every hit until the defender leaves hit stun, then stays for 2 seconds.
+   * A new combo of 2 or more hits replaces it.
+   */
+  private trackCombos(): void {
+    const w = this.world;
+    for (const defender of w.fighters) {
+      const attacker = defender.index === 0 ? 1 : 0;
+      const stunned = isStunned(defender);
+      const shown = this.comboShown[attacker];
+      if (stunned && defender.combo.hits >= 2) {
+        this.comboShown[attacker] = { hits: defender.combo.hits, endedAt: null };
+      } else if (shown && shown.endedAt === null && !stunned) {
+        shown.endedAt = w.frame;
+      } else if (shown && shown.endedAt !== null && w.frame - shown.endedAt >= COMBO_SHOWN_FOR) {
+        this.comboShown[attacker] = null;
+      }
+    }
   }
 
   private dummyInput(): RawInput {

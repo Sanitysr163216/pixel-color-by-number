@@ -27,14 +27,31 @@ export const RULES = {
   /** Gravity for jumps and falls, px per frame per frame. */
   gravity: 0.5,
 
-  /** A button press is remembered for this many frames while the fighter can't act yet. 0 = no buffer. */
-  inputBuffer: 3,
+  /**
+   * How many frames a button press is remembered while the fighter can't act yet (0 = no buffer).
+   * Presses made during hitstop always count for chains and special cancels.
+   */
+  inputBuffer: {
+    /** Normals and command normals. */
+    normals: 1,
+    /** Special moves, CE and Chakra specials. */
+    specials: 3,
+  },
 
   /**
    * Two punches (or two kicks) pressed at most this many frames apart count as pressed together (CE input).
-   * 0 = same frame only. With 1, a second button one frame later upgrades the special that just started.
+   * 0 = exactly the same frame. With 1, a second button one frame later upgrades the special that just started.
    */
-  ceWindow: 1,
+  ceWindow: 0,
+
+  /** Double-tap forward (dash) or back (back hop): 6-5-6 or 4-5-4 within this many frames. */
+  doubleTapWindow: 12,
+
+  /**
+   * Proximity guard: a fighter holding back goes into the block stance this many frames before the opponent's
+   * first active frame, if the attack would reach them. They stop walking backward while in it.
+   */
+  proximityGuard: 2,
 
   meter: {
     /** Points in one bar. */
@@ -73,10 +90,29 @@ export const RULES = {
 
 /**
  * Values a move gets when it leaves the field out, by strength.
- * Heavier moves push further and faster (knockback), freeze longer on contact (hitstop) and build more meter.
+ * Heavier moves push further and faster (knockback) and build more meter.
  */
 export const STRENGTH_DEFAULTS = {
-  L: { hitstop: 7, knockback: { distance: 14, speed: 3.5 }, meterLevel: 1 },
-  M: { hitstop: 9, knockback: { distance: 22, speed: 4.5 }, meterLevel: 2 },
-  H: { hitstop: 11, knockback: { distance: 32, speed: 5.5 }, meterLevel: 3 },
+  L: { knockback: { distance: 14, speed: 3.5 }, meterLevel: 1 },
+  M: { knockback: { distance: 22, speed: 4.5 }, meterLevel: 2 },
+  H: { knockback: { distance: 32, speed: 5.5 }, meterLevel: 3 },
+};
+
+/**
+ * Hitstop: frames both fighters freeze when a move connects. Each character can change these
+ * (CharacterData.hitstop), and a single move can set its own (MoveData.hitstop).
+ */
+export interface HitstopTable {
+  /** Moves done from the ground, by strength. */
+  ground: { L: number; M: number; H: number };
+  /** Moves done in the air that connect with a grounded opponent (every move). */
+  airToGround: number;
+  /** Moves done in the air that connect with an airborne opponent. */
+  airToAir: { hit: number; block: number };
+}
+
+export const DEFAULT_HITSTOP: HitstopTable = {
+  ground: { L: 7, M: 9, H: 11 },
+  airToGround: 7,
+  airToAir: { hit: 3, block: 7 },
 };

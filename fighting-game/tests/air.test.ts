@@ -35,7 +35,7 @@ describe('hitting an airborne opponent', () => {
   it('a grounded heavy normal knocks them down; wakeup starts counting when they hit the ground', () => {
     const w = newWorld(50);
     const p2 = w.fighters[1];
-    play(w, [inp(5, ['HP'])], [inp2(8)]);
+    play(w, [inp(5, ['HK'])], [inp2(8)]);
     for (let i = 0; i < 14 && p2.state !== 'knockdown'; i++) hold(w, 1);
     expect(p2.state).toBe('knockdown');
     expect(p2.y).toBeGreaterThan(0);
@@ -93,8 +93,8 @@ describe('blocking in the air', () => {
   });
 
   it('grounded heavies and specials can not be blocked in the air', () => {
-    for (const id of ['5HP', 'rising.L']) {
-      const { w, p2 } = setUp(id === '5HP' ? 46 : 30, false);
+    for (const id of ['5HK', 'rising.L']) {
+      const { w, p2 } = setUp(id === '5HK' ? 46 : 30, false);
       play(w, inputsFor(id), [inp2(4)]);
       for (let i = 0; i < 14 && p2.state === 'jump'; i++) hold(w, 1, NEUTRAL, inp2(4));
       expect(p2.state, id).toBe('knockdown');

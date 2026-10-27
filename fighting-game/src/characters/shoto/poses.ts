@@ -78,6 +78,23 @@ const LYING: Pose = {
   fe: [-20, 13], fh: [-12, 18], be: [-20, 3], bh: [-11, 2],
   fk: [14, 14], ff: [28, 4], bk: [13, 10], bf: [27, 2],
 };
+const DASH: Pose[] = [
+  {
+    head: [12, 80], neck: [9, 72], hip: [0, 46],
+    fe: [16, 60], fh: [22, 54], be: [-2, 62], bh: [-10, 56],
+    fk: [14, 24], ff: [22, 4], bk: [-12, 22], bf: [-22, 6],
+  },
+  {
+    head: [12, 81], neck: [9, 73], hip: [0, 47],
+    fe: [14, 61], fh: [20, 55], be: [0, 62], bh: [-8, 57],
+    fk: [6, 26], ff: [2, 6], bk: [2, 25], bf: [8, 1],
+  },
+];
+const HOP: Pose = {
+  head: [-4, 84], neck: [-3, 75], hip: [0, 46],
+  fe: [8, 60], fh: [14, 54], be: [-8, 62], bh: [-14, 58],
+  fk: [10, 34], ff: [8, 14], bk: [-4, 32], bf: [-10, 14],
+};
 const KNEEL: Pose = {
   head: [6, 64], neck: [4, 56], hip: [-2, 30],
   fe: [12, 44], fh: [16, 36], be: [6, 42], bh: [10, 34],
@@ -138,12 +155,13 @@ const LU0: Pose = {
   fe: [6, 50], fh: [2, 44], be: [12, 48], bh: [18, 52],
   fk: [14, 18], ff: [20, 0], bk: [-12, 16], bf: [-22, 0],
 };
+// Both arms thrown out in opposite directions, like Yun's lunge in Third Strike.
 const LU1: Pose = {
   head: [14, 64], neck: [10, 56], hip: [2, 36],
-  fe: [20, 52], fh: [32, 51], be: [8, 48], bh: [4, 42],
+  fe: [26, 54], fh: [44, 52], be: [-8, 56], bh: [-26, 58],
   fk: [16, 18], ff: [22, 0], bk: [-12, 16], bf: [-24, 0], bigHand: true,
 };
-const LU2: Pose = { ...LU1, fe: [18, 52], fh: [28, 51] };
+const LU2: Pose = { ...LU1, fe: [22, 54], fh: [38, 52], be: [-6, 56], bh: [-22, 57] };
 
 const AX0: Pose = { ...STANCE, head: [3, 87], neck: [1, 78], fk: [12, 46], ff: [16, 30] };
 const AX1: Pose = { ...STANCE, head: [1, 87], neck: [0, 78], hip: [-1, 50], fe: [6, 66], fh: [12, 72], fk: [12, 72], ff: [16, 98] };
@@ -187,7 +205,7 @@ interface MoveAnim {
 const MOVES: Record<string, MoveAnim> = {
   '5LP': { startup: [STANCE, LP0], active: [LP1], recovery: [LP2, LP0, STANCE] },
   '5MP': { startup: [MP0], active: [MP1], recovery: [MP2, MP0, STANCE] },
-  '5HP': { startup: [DK0, DK1], active: [DK2], recovery: [DK2, DK3, DK0, STANCE] },
+  '5HK': { startup: [DK0, DK1], active: [DK2], recovery: [DK2, DK3, DK0, STANCE] },
   '2HK': { startup: [CROUCH, SW0], active: [SWEEP_FRONT, SWEEP_BACK, SWEEP_FRONT, SWEEP_BACK], recovery: [SW0, CROUCH] },
   '6MP': { startup: [STANCE, LU0], active: [LU1], recovery: [LU2, LU0, STANCE] },
   '6MK': { startup: [AX0, AX1, AX2], active: [AX3, AX4, AX4], recovery: [AX5, STANCE] },
@@ -219,15 +237,19 @@ function moveAnim(id: string): MoveAnim {
 export function shotoPose(f: Fighter, clock: number): PoseResult {
   switch (f.state) {
     case 'ground':
+      if (f.guarding) return { pose: f.crouching ? CROUCH_BLOCK : BLOCK };
       if (f.crouching) return { pose: CROUCH };
       if (f.walk) {
         const i = Math.floor(f.frame / 6) % 4;
         return { pose: WALK[f.walk > 0 ? i : 3 - i] };
       }
       return { pose: Math.floor(clock / 24) % 2 ? BREATHE : STANCE };
+    case 'dash':
+      return { pose: DASH[Math.floor(f.frame / 4) % 2] };
     case 'jumpSquat':
       return { pose: JUMP_SQUAT };
     case 'jump':
+      if (f.hop) return { pose: HOP };
       return { pose: f.vy > 0 ? JUMP_UP : JUMP_DOWN };
     case 'landing':
       return { pose: f.lastMove?.id.startsWith('rising') ? RP_LAND : CROUCH };

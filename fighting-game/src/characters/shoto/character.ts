@@ -9,7 +9,7 @@ import {
   risingPushH,
   risingPushL,
   risingPushM,
-  standHP,
+  standHK,
   standLP,
   standMP,
 } from './moves';
@@ -21,6 +21,10 @@ export const shoto: CharacterData = {
   walkForward: 2.5,
   walkBack: 2,
   jump: { squat: 4, up: 10, forward: 3, back: 2.5 },
+  // Like Bishamon in Vampire Savior, scaled to this character's size: a fast continuous dash forward,
+  // a short hop backward.
+  dash: { speed: 5 },
+  backHop: { up: 4.5, back: 3.5 },
 
   hurtboxes: {
     stand: [
@@ -47,10 +51,10 @@ export const shoto: CharacterData = {
   normals: {
     '5LP': standLP,
     '5MP': standMP,
-    '5HP': standHP,
+    '5HP': null,
     '5LK': null,
     '5MK': null,
-    '5HK': null,
+    '5HK': standHK,
     '2LP': null,
     '2MP': null,
     '2HP': null,

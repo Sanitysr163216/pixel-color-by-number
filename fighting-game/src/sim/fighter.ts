@@ -5,8 +5,9 @@ import type { CompiledMove } from '../moves/compile';
 
 /**
  * ground     standing, walking or crouching; free to act
+ * dash       running forward while forward is held (double-tap forward); no attacks
  * jumpSquat  the frames on the ground before a jump
- * jump       in the air; can block, and can attack once per jump
+ * jump       in the air (jump or back hop); can block, and can attack once per jump
  * move       doing a move (startup / active / recovery)
  * landing    landing recovery after a move that left the ground
  * hitstun    hit on the ground
@@ -17,6 +18,7 @@ import type { CompiledMove } from '../moves/compile';
  */
 export type StateName =
   | 'ground'
+  | 'dash'
   | 'jumpSquat'
   | 'jump'
   | 'move'
@@ -53,6 +55,10 @@ export interface Fighter {
   /** Frames spent in the current state. */
   frame: number;
   crouching: boolean;
+  /** Proximity guard: holding back while an attack that would reach is about to come out. */
+  guarding: boolean;
+  /** In the air from a back hop rather than a jump. */
+  hop: boolean;
   /** Walking direction relative to facing while in 'ground'. */
   walk: -1 | 0 | 1;
   jumpDir: -1 | 0 | 1;
@@ -65,6 +71,12 @@ export interface Fighter {
   special: { def: CompiledSpecial; button: ButtonName } | null;
   /** Hit numbers of the current move that already connected. */
   hitsDone: number;
+  /** World frame on which the current move first connected (hit or block); 0 = not yet. */
+  contactFrame: number;
+  /** The current move was started by chaining from another normal. */
+  chained: boolean;
+  /** Chains used in the current combo, as 'from>to' move ids. A combo can't repeat one. */
+  chainsUsed: string[];
   /** Frames left in hitstun, blockstun, landing recovery or on the ground after a knockdown. */
   stun: number;
   airBlock: boolean;
@@ -102,6 +114,8 @@ export function createFighter(index: 0 | 1, char: CompiledCharacter): Fighter {
     state: 'ground',
     frame: 0,
     crouching: false,
+    guarding: false,
+    hop: false,
     walk: 0,
     jumpDir: 0,
     move: null,
@@ -109,6 +123,9 @@ export function createFighter(index: 0 | 1, char: CompiledCharacter): Fighter {
     moveFromAir: false,
     special: null,
     hitsDone: 0,
+    contactFrame: 0,
+    chained: false,
+    chainsUsed: [],
     stun: 0,
     airBlock: false,
     landed: false,
@@ -123,6 +140,11 @@ export function createFighter(index: 0 | 1, char: CompiledCharacter): Fighter {
     lastCommand: '',
     lastCommandFrame: 0,
   };
+}
+
+/** Hit states: the fighter is part of a combo until they leave these. */
+export function isStunned(f: Fighter): boolean {
+  return f.state === 'hitstun' || f.state === 'airReset' || f.state === 'knockdown' || f.state === 'ko';
 }
 
 /** Which part of its move a fighter is in. */

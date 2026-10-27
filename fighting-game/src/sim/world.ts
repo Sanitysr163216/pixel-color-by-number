@@ -17,7 +17,7 @@ import {
 import { motionDone } from '../input/motions';
 import { airHitResult, canAirBlock, type CompiledMove, type UBox } from '../moves/compile';
 import { intersection, overlap, place, type Rect } from './boxes';
-import { createFighter, type Fighter } from './fighter';
+import { createFighter, isStunned, type Fighter } from './fighter';
 
 const GRAVITY = px(RULES.gravity);
 const WALL_LEFT = px(WALL_MARGIN);
@@ -51,6 +51,14 @@ interface Contact {
   where: Rect;
 }
 
+/** Which kinds of move a press may start. */
+interface Allow {
+  specials: boolean;
+  normals: boolean;
+  /** Cancelling this move by chaining: only into a different normal, and each chain once per combo. */
+  chainFrom?: CompiledMove;
+}
+
 /**
  * The fight itself: two fighters and the rules. Advances exactly one frame (1/60 s) per step().
  * Nothing in here reads the clock or the keyboard, so the same inputs always give the same fight.
@@ -80,8 +88,10 @@ export class World {
       f.hitstop = 0;
       f.slide = null;
       f.combo = { hits: 0, damage: 0 };
+      f.chainsUsed = [];
       f.lastMove = null;
       f.lastCommand = '';
+      f.input.clear(); // motions from before the reset don't count
       this.toGround(f);
     }
     this.advantage = null;
@@ -112,6 +122,9 @@ export class World {
     // Both hits are found before either is applied, so two moves that connect on the same frame trade.
     const contacts = fs.map((f) => (frozen[f.index] ? null : this.findContact(f)));
     contacts.forEach((c, i) => c && this.applyContact(fs[i], c));
+
+    // A combo lasts until the defender leaves hit stun; after that its chains can be used again.
+    for (const f of fs) if (!isStunned(this.other(f))) f.chainsUsed.length = 0;
     this.finishMeasure();
   }
 
@@ -122,15 +135,26 @@ export class World {
     const m = this.measuring;
     if (m && m.free[f.index] === null && this.isFree(f)) m.free[f.index] = this.frame;
 
+    if (f.state === 'dash') {
+      // The dash lasts while forward is held; buttons do nothing mid-dash.
+      if (this.direction(f) === 6) {
+        const frame = f.input.get(0)!;
+        frame.used |= frame.pressed;
+        return;
+      }
+      this.toGround(f); // any other input cancels it at once
+    }
+
     switch (f.state) {
       case 'ground':
+        this.updateGuard(f);
         if (!this.tryMove(f)) this.groundMovement(f);
         break;
       case 'jump':
         if (!f.airActionUsed) this.tryMove(f);
         break;
       case 'move':
-        this.tryUpgradeToCE(f);
+        if (!this.tryCancel(f)) this.tryUpgradeToCE(f);
         break;
       case 'blockstun':
         // Switch between standing and crouching block while blocking.
@@ -169,7 +193,13 @@ export class World {
   }
 
   private isFree(f: Fighter): boolean {
-    return f.state === 'ground' || (f.state === 'jump' && !f.airActionUsed);
+    return f.state === 'ground' || f.state === 'dash' || (f.state === 'jump' && !f.airActionUsed);
+  }
+
+  /** The direction held this frame, in numpad notation relative to the fighter. */
+  private direction(f: Fighter, age = 0): number {
+    const frame = f.input.get(age);
+    return frame ? numpad(frame.x, frame.y, f.facing) : 5;
   }
 
   private groundMovement(f: Fighter): void {
@@ -181,10 +211,69 @@ export class World {
       f.jumpDir = dir === 9 ? 1 : dir === 7 ? -1 : 0;
       f.walk = 0;
       f.crouching = false;
+      f.guarding = false;
+      return;
+    }
+    if (this.doubleTap(f, 6)) {
+      f.state = 'dash';
+      f.frame = 0;
+      f.walk = 0;
+      f.crouching = false;
+      f.guarding = false;
+      return;
+    }
+    if (this.doubleTap(f, 4)) {
+      this.backHop(f);
       return;
     }
     f.crouching = input.y < 0;
-    f.walk = f.crouching ? 0 : dir === 6 ? 1 : dir === 4 ? -1 : 0;
+    f.walk = f.crouching || f.guarding ? 0 : dir === 6 ? 1 : dir === 4 ? -1 : 0;
+  }
+
+  /** Forward (6) or back (4) tapped twice: dir, neutral, dir, with this frame being the second tap. */
+  private doubleTap(f: Fighter, dir: number): boolean {
+    if (this.direction(f) !== dir || this.direction(f, 1) === dir) return false;
+    return motionDone(f.input, [dir, 5, dir], RULES.doubleTapWindow, f.facing);
+  }
+
+  private backHop(f: Fighter): void {
+    f.state = 'jump';
+    f.frame = 0;
+    f.hop = true;
+    f.airActionUsed = false;
+    f.walk = 0;
+    f.crouching = false;
+    f.guarding = false;
+    f.vy = f.char.backHop.up;
+    f.vx = -f.facing * f.char.backHop.back;
+  }
+
+  /**
+   * Proximity guard: holding back while the opponent's attack is at most RULES.proximityGuard frames from its
+   * first active frame (or active), and would reach from where both stand now.
+   */
+  private updateGuard(f: Fighter): void {
+    const a = this.other(f);
+    const input = f.input.get(0)!;
+    const away = a.x > f.x ? -1 : a.x < f.x ? 1 : -f.facing;
+    const holdingBack = f.autoBlock || input.x === away; // the training dummy blocks without pressing back
+    f.guarding = holdingBack && input.y <= 0 && this.threatened(f, a, input.y < 0);
+  }
+
+  private threatened(d: Fighter, a: Fighter, crouching: boolean): boolean {
+    const m = a.move;
+    if (a.state !== 'move' || !m) return false;
+    const next = a.moveFrame + 1; // the attacker's frame once this frame is played
+    if (next < m.startup + 1 - RULES.proximityGuard || next > m.startup + m.active) return false;
+    const hurt = (crouching ? d.char.hurt.crouch : d.char.hurt.stand).map((b) => place(d.x, d.y, d.facing, b));
+    return m.hitPhases.some(
+      (p) =>
+        !(a.hitsDone & (1 << p.hit)) &&
+        p.boxes.some((b) => {
+          const hb = place(a.x, a.y, a.facing, b);
+          return hurt.some((h) => overlap(hb, h));
+        }),
+    );
   }
 
   // ---------------------------------------------------------------- reading commands
@@ -192,11 +281,31 @@ export class World {
   /** Looks at the presses of the last few frames (newest first) and starts a move if one matches. */
   private tryMove(f: Fighter): boolean {
     const air = f.state === 'jump';
-    for (let age = 0; age <= RULES.inputBuffer; age++) {
+    const { normals, specials } = RULES.inputBuffer;
+    for (let age = 0; age <= Math.max(normals, specials); age++) {
       const frame = f.input.get(age);
       if (!frame) break;
       const fresh = frame.pressed & ~frame.used;
-      if (fresh && this.resolve(f, age, fresh, air)) return true;
+      if (fresh && this.resolve(f, age, fresh, air, { specials: age <= specials, normals: age <= normals })) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Cancels a move that connected. Chains: any normal into a different normal, pressed while the opponent is
+   * in hitstun, each chain once per combo. Special cancels: from a normal (not a command normal) that was not
+   * itself reached by a chain, into a special, CE or Chakra special. Presses during hitstop count.
+   */
+  private tryCancel(f: Fighter): boolean {
+    const m = f.move!;
+    if (!f.contactFrame || f.moveFromAir) return false;
+    const chain = (m.kind === 'normal' || m.kind === 'command') && this.other(f).state === 'hitstun';
+    const special = m.kind === 'normal' && !f.chained;
+    if (!chain && !special) return false;
+    for (let age = 0; age < this.frame - f.contactFrame && age < f.input.length; age++) {
+      const frame = f.input.get(age)!;
+      const fresh = frame.pressed & ~frame.used;
+      if (fresh && this.resolve(f, age, fresh, false, { specials: special, normals: chain, chainFrom: m })) return true;
     }
     return false;
   }
@@ -206,10 +315,10 @@ export class World {
    * command normals, normals. Returns true if a move started; a recognised input whose move doesn't
    * exist yet uses up the press and does nothing.
    */
-  private resolve(f: Fighter, age: number, fresh: number, air: boolean): boolean {
+  private resolve(f: Fighter, age: number, fresh: number, air: boolean, allow: Allow): boolean {
     const c = f.char;
     const frame = f.input.get(age)!;
-    if (!air) {
+    if (allow.specials && !air) {
       for (const cs of c.chakraSpecials) {
         const type = cs.button === 'P' ? PUNCHES : KICKS;
         if (!(fresh & type) || !motionDone(f.input, cs.motion, cs.window, f.facing, age)) continue;
@@ -228,12 +337,14 @@ export class World {
         this.use(f, age, pressed);
         return this.startSpecial(f, sp, HEAVIEST_FIRST.find((b) => pressed & BTN[b])!);
       }
+    }
+    if (!allow.normals) return false;
+    if (!air) {
       const dir = numpad(frame.x, frame.y, f.facing);
       for (const cn of c.commandNormals) {
         if (cn.direction !== dir || !(fresh & BTN[cn.button])) continue;
         this.use(f, age, BTN[cn.button]);
-        this.startMove(f, cn.move, null);
-        return true;
+        return this.startNormal(f, cn.move, false, allow.chainFrom);
       }
     }
     const stance = air ? 'j.' : frame.y < 0 ? '2' : '5';
@@ -242,13 +353,35 @@ export class World {
       const slot = `${stance}${b}` as NormalSlot;
       this.use(f, age, BTN[b]);
       const m = c.normals[slot];
-      if (m) {
-        this.startMove(f, m, null, stance === '2');
-        return true;
+      if (!m) {
+        this.note(f, `${slot}: EMPTY SLOT`);
+        continue;
       }
-      this.note(f, `${slot}: EMPTY SLOT`);
+      return this.startNormal(f, m, stance === '2', allow.chainFrom);
     }
     return false;
+  }
+
+  /** Starts a normal. When chaining: only into a different normal, and each chain only once per combo. */
+  private startNormal(f: Fighter, m: CompiledMove, crouching: boolean, chainFrom?: CompiledMove): boolean {
+    if (!chainFrom) {
+      this.startMove(f, m, null, crouching);
+      return true;
+    }
+    const chain = `${chainFrom.id}>${m.id}`;
+    if (m.id === chainFrom.id) {
+      this.note(f, `${m.id}: CAN'T CHAIN INTO ITSELF`);
+      return false;
+    }
+    if (f.chainsUsed.includes(chain)) {
+      this.note(f, `${chainFrom.id} > ${m.id}: CHAIN ALREADY USED`);
+      return false;
+    }
+    this.startMove(f, m, null, crouching);
+    f.chained = true;
+    f.chainsUsed.push(chain);
+    this.note(f, `${m.name.toUpperCase()} (CHAIN)`);
+    return true;
   }
 
   /** Unused presses of `type` (punches or kicks) from frame `age` and the RULES.ceWindow frames before it. */
@@ -261,20 +394,18 @@ export class World {
     return mask;
   }
 
+  /** Two buttons: the CE version if it exists and there is a bar to spend, otherwise the normal special. */
   private startCE(f: Fighter, sp: CompiledSpecial, together: number, age: number, type: number): boolean {
     for (let a = age; a <= age + RULES.ceWindow; a++) this.use(f, a, type);
     const ce = sp.CE;
-    if (!ce) {
-      this.note(f, `CE ${sp.name}: NOT MADE YET`);
-      return false;
-    }
-    if (f.meter >= ce.barCost * PER_BAR) {
+    if (ce && f.meter >= ce.barCost * PER_BAR) {
       f.meter -= ce.barCost * PER_BAR;
       this.startMove(f, ce, null);
       return true;
     }
-    // Not enough meter: the normal version of the heaviest button.
-    return this.startSpecial(f, sp, HEAVIEST_FIRST.find((b) => together & BTN[b])!);
+    const started = this.startSpecial(f, sp, HEAVIEST_FIRST.find((b) => together & BTN[b])!);
+    if (started) this.note(f, `${f.lastCommand} (${ce ? 'NO BAR FOR CE' : 'CE NOT MADE YET'})`);
+    return started;
   }
 
   private startSpecial(f: Fighter, sp: CompiledSpecial, button: ButtonName): boolean {
@@ -287,7 +418,7 @@ export class World {
     return true;
   }
 
-  /** A second punch (or kick) right after a special started turns it into the CE version. */
+  /** With RULES.ceWindow above 0: a second punch (or kick) right after a special started upgrades it to its CE. */
   private tryUpgradeToCE(f: Fighter): void {
     const s = f.special;
     if (!s || f.moveFrame > RULES.ceWindow) return;
@@ -297,11 +428,7 @@ export class World {
     if (!second) return;
     frame.used |= second;
     const ce = s.def.CE;
-    if (!ce) {
-      this.note(f, `CE ${s.def.name}: NOT MADE YET`);
-      return;
-    }
-    if (f.meter < ce.barCost * PER_BAR) return;
+    if (!ce || f.meter < ce.barCost * PER_BAR) return;
     f.meter -= ce.barCost * PER_BAR;
     const moveFrame = f.moveFrame;
     this.startMove(f, ce, null);
@@ -327,7 +454,10 @@ export class World {
     f.moveFromAir = air;
     f.special = special;
     f.hitsDone = 0;
+    f.contactFrame = 0;
+    f.chained = false;
     f.walk = 0;
+    f.guarding = false;
     if (air) {
       f.airActionUsed = true;
     } else {
@@ -347,6 +477,9 @@ export class World {
     switch (f.state) {
       case 'ground':
         if (f.walk) this.moveX(f, f.facing * f.walk * (f.walk > 0 ? c.walkForward : c.walkBack));
+        break;
+      case 'dash':
+        this.moveX(f, f.facing * c.dash.speed);
         break;
       case 'jumpSquat':
         if (f.frame >= c.jump.squat) {
@@ -410,12 +543,9 @@ export class World {
   /** A move in the air touched the ground: it ends, followed by its landing recovery. */
   private landMove(f: Fighter): void {
     const recovery = f.moveFromAir ? RULES.airAttackLanding : f.move!.landingRecovery;
-    if (recovery <= 1) {
-      this.toGround(f);
-      return;
-    }
-    // Recovery R: the fighter touches the ground on frame L and can act again on frame L + R.
     this.toGround(f);
+    if (recovery <= 1) return;
+    // Recovery R: the fighter touches the ground on frame L and can act again on frame L + R.
     f.state = 'landing';
     f.stun = recovery - 1;
   }
@@ -498,6 +628,8 @@ export class World {
     f.landed = false;
     f.down = false;
     f.airActionUsed = false;
+    f.guarding = false;
+    f.hop = false;
     const input = f.input.get(0);
     f.crouching = !!input && input.y < 0;
   }
@@ -536,12 +668,15 @@ export class World {
     const def = this.other(att);
     const m = c.move;
     att.hitsDone |= 1 << c.hit;
+    if (!att.contactFrame) att.contactFrame = this.frame;
     const air = this.isAirborne(def);
     const blocked = this.blocks(def, att, m, c.fromAir, air);
-    att.hitstop = Math.max(att.hitstop, m.hitstop);
-    def.hitstop = Math.max(def.hitstop, m.hitstop);
+    const stop = this.hitstop(att, m, c.fromAir, air, blocked);
+    att.hitstop = Math.max(att.hitstop, stop);
+    def.hitstop = Math.max(def.hitstop, stop);
     const away = def.x > att.x ? 1 : def.x < att.x ? -1 : att.facing;
     const knockback = { left: m.knockback.distance, speed: m.knockback.speed, dir: away, from: att.index };
+    def.guarding = false;
 
     if (blocked) {
       def.state = 'blockstun';
@@ -598,12 +733,25 @@ export class World {
     this.measuring = { attacker: att.index, blocked, free: [null, null] };
   }
 
-  /** Hold back to block. Crouch to block lows, stand to block overheads. In the air, see canAirBlock. */
+  /** The move's own hitstop if it has one, otherwise the attacker's hitstop table. */
+  private hitstop(att: Fighter, m: CompiledMove, fromAir: boolean, defenderAir: boolean, blocked: boolean): number {
+    if (m.hitstop !== null) return m.hitstop;
+    const t = att.char.hitstop;
+    if (!fromAir) return t.ground[m.strength];
+    if (!defenderAir) return t.airToGround;
+    return blocked ? t.airToAir.block : t.airToAir.hit;
+  }
+
+  /**
+   * Hold back to block. Crouch to block lows, stand to block overheads. In the air, see canAirBlock.
+   * Once blocking, every hit of the blockstring is blocked, even if back is released.
+   */
   private blocks(def: Fighter, att: Fighter, m: CompiledMove, fromAir: boolean, air: boolean): boolean {
     if (def.state !== 'ground' && def.state !== 'blockstun' && def.state !== 'jump') return false;
     if (air && !canAirBlock(m, fromAir)) return false;
-    if (def.autoBlock) {
-      if (!air && m.guard !== 'mid') def.crouching = m.guard === 'low';
+    const guard = fromAir ? m.airGuard : m.guard;
+    if (def.state === 'blockstun' || def.autoBlock) {
+      if (!air && guard !== 'mid') def.crouching = guard === 'low';
       return true;
     }
     const input = def.input.get(0)!;
@@ -611,7 +759,7 @@ export class World {
     if (input.x !== away) return false;
     if (air) return true;
     const crouch = input.y < 0;
-    if ((m.guard === 'low' && !crouch) || (m.guard === 'overhead' && crouch)) return false;
+    if ((guard === 'low' && !crouch) || (guard === 'overhead' && crouch)) return false;
     def.crouching = crouch;
     return true;
   }

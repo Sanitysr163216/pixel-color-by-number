@@ -80,9 +80,14 @@ export function putInAir(f: Fighter, y: number, vy: number, airActionUsed = fals
 }
 
 /** A Shoto with extra moves, for testing rules no real move uses yet (jumping attacks, CE). */
-export function testCharacter(extra: { normals?: Partial<CharacterData['normals']>; leopardCE?: MoveData }): CompiledCharacter {
+export function testCharacter(extra: {
+  normals?: Partial<CharacterData['normals']>;
+  leopardCE?: MoveData;
+  hitstop?: CharacterData['hitstop'];
+}): CompiledCharacter {
   const data: CharacterData = {
     ...shoto,
+    hitstop: extra.hitstop,
     normals: { ...shoto.normals, ...extra.normals },
     specials: shoto.specials.map((s) => (s.id === 'leopard' && extra.leopardCE ? { ...s, CE: extra.leopardCE } : s)),
   };

@@ -1,6 +1,6 @@
 # Design notes
 
-The rules as specified, how the game reads them, and the defaults chosen where the spec says nothing.
+The rules as specified, how the game reads them, and the assumptions made where the spec says nothing.
 Every number here lives in code and can be changed there (see "Where to change things" at the end).
 
 ## Conventions
@@ -21,62 +21,72 @@ Every number here lives in code and can be changed there (see "Where to change t
   After `active` and `recovery`, the fighter can act again on frame startup + active + recovery + 1.
 - **Hitstun / blockstun N** are counted after hitstop. The defender can act again on the frame after the N-th.
 - **Landing recovery R**: the fighter touches the ground on frame L and can act again on frame L + R.
-- **Wakeup W**: the fighter lies on the ground for W frames, counting the frame they touch it. On the next frame
-  the hurtbox comes back and the buttons work again, on the same frame.
+- **Wakeup W**: the fighter lies on the ground for W frames, counting the frame they touch it (the timer never
+  starts before that). On the next frame the hurtbox comes back and the buttons work again, on the same frame.
 - **Distances** are pixels of the 304×224 screen (the size of KOF97's picture on the Neo Geo).
   Box positions are measured from the fighter's centre at the feet: x forward, y up.
 
-## Buttons and inputs
+## Buttons, inputs and movement
 
 - 6 buttons: LP MP HP (punches), LK MK HK (kicks).
-- What a press does, in order of priority: Chakra special > special move (CE if two punches or two kicks) >
+- What a press does, in order of priority: Chakra special > special move (CE with two punches or two kicks) >
   command normal (direction + button) > normal (standing, crouching or jumping).
 - Motions allow other directions in between, because a stick rolls through them:
   4-2-1-6 also matches 4,1,2,1,2,3,6. 4-2-1-6 must be done within 20 frames, 6-2-3 within 15.
   A half circle forward (4-1-2-3-6) does not count as 4-2-1-6.
-- **Input buffer**: a press is remembered for 3 frames while the fighter is busy, so a button pressed just before
-  recovery ends still comes out on the first free frame.
-- **CE (Chakra Enhance)**: the special's motion with two punches (or two kicks) pressed on the same frame, or the
-  second one frame later. Costs 1 bar. With less than 1 bar, the normal version of the heavier button comes out.
+- **Input buffer**: a normal pressed 1 frame before the fighter is free still comes out; specials, CE and Chakra
+  specials are remembered for 3 frames.
+- **CE (Chakra Enhance)**: the special's motion with two punches (or two kicks) on exactly the same frame. Costs 1 bar.
+  With no bar, or while the CE move isn't made yet, the two buttons do the normal special (the heavier button's
+  version).
 - **Moves not made yet** (blank in the spec): the input is read, nothing happens. Training mode shows the input
-  as "EMPTY SLOT" or "NOT MADE YET". This covers standing LK/MK/HK, crouching LP/MP/HP/LK/MK, all jumping
-  attacks, both CE versions and the Chakra specials.
+  as "EMPTY SLOT". The list is under Character 1 below.
+- **Walk** forward and back, **jump** forward, neutral or backward.
+- **Dash**: tap forward twice (6-5-6 within 12 frames). The fighter runs forward continuously while forward is held;
+  any other input stops it at once. Attacks can't be used during the dash.
+- **Back hop**: tap back twice (4-5-4). A short hop backwards, like Bishamon's in Vampire Savior. Air normals can be
+  used until the fighter lands.
 
-## Universal rules (from the spec)
+## Rules
 
 | Rule | How it works |
 | --- | --- |
 | Startup / active / recovery | Every move has all three. The hitbox exists only on active frames. |
 | Knockback on every normal | Each move sets `knockback: { distance, speed }` (px, px per frame). Defaults: light 14 px at 3.5, medium 22 px at 4.5, heavy 32 px at 5.5. It starts after hitstop. If the opponent is in the corner, the attacker slides back instead. Specials have knockback too. |
 | Hitstun per move | Every move sets its own `hitstun` and `blockstun`. |
-| Blocking | Hold back. Crouch (down-back) to block lows; overheads (forward + MK) must be blocked standing. |
-| Air blocking | Light and medium normals done from the ground can be blocked in the air; heavies done from the ground can't. Light, medium and heavy attacks done in the air can all be blocked by an airborne opponent. |
-| Hit in the air by a light or medium normal | Flips backwards, invulnerable until landing, can't act until landing. |
-| Hit in the air by a heavy or a special done from the ground | Knocked down like a sweep; the wakeup count starts when they hit the ground. |
+| Hitstop | Set per character, defaults: moves done from the ground 7 / 9 / 11 frames (light / medium / heavy); moves done in the air against a grounded opponent 7 for every move; air against air 3 on hit, 7 on block. A single move can set its own. |
+| Blocking | Hold back. Crouch (down-back) to block lows; overheads must be blocked standing. Forward + MK is an overhead, and every move done in the air is an overhead unless the move says otherwise. |
+| Proximity guard | While holding back, the fighter goes into the block stance from 2 frames before the opponent's first active frame, if the attack would reach them where they stand. They stop walking backward. |
+| Blockstrings | Once a fighter blocks, every hit that arrives while they are still in blockstun is blocked too, even if they let go of back, highs and lows alike. |
+| Air blocking | Normals done from the ground: light and medium can be blocked in the air, heavies can't. Specials done from the ground can't be blocked in the air, including ones that leave the ground themselves (Rising Push). Anything done after jumping (normals or specials) can be blocked by an airborne opponent. |
+| Hit in the air by a normal | A light or medium normal done from the ground, or any normal done in the air: the opponent flips backwards, invulnerable until landing, and can't act until landing. |
+| Hit in the air by a heavy or a special done from the ground | Knocked down like a sweep; the wakeup count starts when they hit the ground. Rising Push also knocks down an opponent on the ground. |
 | Acting in the air | After using a move in the air, or after being hit in the air, a fighter can't act until landing. Blocking in the air gives the air attack back. |
 | Knockdown and wakeup | Invulnerable from the hit until wakeup. The hurtbox and the buttons come back on the same frame. |
+| Chains | A normal that hits can be cancelled into a different normal (command normals included) pressed while the opponent is in hitstun. A combo can't use the same chain twice (the same move into the same move). |
+| Special cancels | A normal (not a command normal) can be cancelled into a special, CE or Chakra special, unless that normal was itself reached by a chain. |
+| Combo counter | Counts every hit until the defender leaves hit stun; shown on the attacker's side from 2 hits; stays 2 seconds after the combo ends; a new combo of 2 or more hits replaces it. |
 | Meter | 10 bars of 100 points. Blocking: +2 per blocked hit for the defender; the attacker gets nothing for a blocked hit. Hitting: +3 × 1 / 2 / 3 for light / medium / heavy. |
 | CE | Alternate version of a special with two buttons, 1 bar. |
 | Chakra specials | Moves that cost 1–2 bars. |
 | Special properties | Per move, by frame: `invincible`, `airborne`, `vulnerable` (extra damage taken), hurtbox changes, movement. |
 
-## Defaults chosen where the spec says nothing
+## Assumptions to confirm
 
-Please confirm or change these.
-
-1. **Specials done from the ground can't be blocked in the air.** The spec only says this for heavies.
-   Per move: `airBlockable`.
-2. **A heavy done in the air that hits an airborne opponent flips them** (the knockdown rule names heavies done
-   from the ground). Per move: `airHit: 'knockdown'`.
-3. **Rising Push knocks down a grounded opponent** (like a dragon punch). Per version: remove `knockdown`.
-4. **Jumping attacks have to be blocked standing**, as in SF and KOF. Per move: `guard`.
-5. **Hitstop** (both fighters freeze on contact): light 7, medium 9, heavy 11 frames. Per move: `hitstop`.
-6. **Wakeup** takes 40 frames; heavy Leopard Strike's knockdown makes it 80.
-7. **Character basics**: 1000 health; walk 2.5 px per frame forward, 2 back; jumps have 4 frames on the ground
-   first, last about 41 frames and go about 105 px high; forward, neutral and backward jumps only.
-8. **Not in the game until the spec asks for them**: dashes, throws, chip damage, cancels (normal into special),
-   proximity guard (holding back near an attack makes you block instead of walking away).
-9. **Landing during an air attack**: 2 frames before the fighter can act.
+1. **Chains only on hit.** The spec says the second normal is pressed "within hitstun", so a blocked normal can't
+   chain. Should chains also work on block?
+2. **"The same chain"** is read as the same pair in the same order: 5LP into 5MP can be used once per combo, but
+   5MP into 5LP is a different chain.
+3. **Special cancels work on hit and on block**, at any time after the normal connects until it ends.
+4. **No chains or cancels in the air**, because a fighter can't act again after using a move in the air.
+5. **Presses during hitstop count for chains and special cancels.** With a 1-frame buffer for normals, chains
+   would otherwise need a press on one exact frame.
+6. **Blockstrings still follow the air-block rules**: a grounded heavy can't be blocked in the air even in the
+   middle of a blockstring.
+7. **Dash and back hop numbers** are estimates of Bishamon's, scaled to this character's size: dash 5 px per frame
+   (walk is 2.5); back hop leaves the ground at once, about 19 frames in the air and about 66 px back, no
+   invulnerability.
+8. **Landing during an air attack**: 2 frames before the fighter can act.
 
 ## Character 1: Shoto / "zoner"
 
@@ -86,9 +96,9 @@ Current numbers (all first guesses, to tune by playing). S / A / R = startup / a
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
 | 5LP | Palm Strike | 4 | 2 | 7 | 30 | 12 | 8 | 14 px at 3.5 | Hits high: whiffs on crouching opponents |
 | 5MP | Twin Palm | 6 | 3 | 11 | 60 | 17 | 13 | 22 px at 4.5 | Both hands |
-| 5HP | Donkey Kick | 9 | 4 | 17 | 90 | 21 | 16 | 32 px at 5.5 | Hits high |
+| 5HK | Donkey Kick | 9 | 4 | 17 | 90 | 21 | 16 | 32 px at 5.5 | Hits high |
 | 2HK | Double Spin Sweep | 8 | 12 | 20 | 80 | knockdown | 14 | 32 px at 5.5 | Low. Hitbox alternates front, back, front, back (3 frames each); hits once |
-| 6 + MP | Lunging Palm | 8 | 3 | 14 | 55 | 16 | 12 | 22 px at 4.5 | Slides 16 px forward; hitbox reaches past the arm; hurtbox lowered to 64 px |
+| 6 + MP | Lunging Palm | 8 | 3 | 14 | 55 | 16 | 12 | 22 px at 4.5 | Both arms thrown out in opposite directions, like Yun's in Third Strike. Slides 16 px forward, hits far (64 px), hitbox 16 px past the arm, hurtbox lowered to 64 px |
 | 6 + MK | Axe Kick | 18 | 3 | 14 | 70 | 18 | 12 | 22 px at 4.5 | Overhead; moves 21 px forward |
 | 4 2 1 6 + LP | Leopard Strike L | 7 | 1 | 10 | 100 | 20 | 12 | 16 px at 4 | Double damage if hit during startup |
 | 4 2 1 6 + MP | Leopard Strike M | 9 | 1 | 12 | 120 | 22 | 14 | 22 px at 4.5 | Double damage if hit during startup |
@@ -100,22 +110,27 @@ Current numbers (all first guesses, to tune by playing). S / A / R = startup / a
 Rising Push leaves the ground after its startup; its feet (the hitbox) have no hurtbox. The move ends when the
 fighter lands, then the landing recovery applies.
 
-## Still open
+Not made yet (the input is read, nothing happens): standing HP, LK, MK; crouching LP, MP, HP, LK, MK; every
+jumping attack; both CE versions; the Chakra specials.
 
-- **Forward + MP**: the spec's sentence stops at "lowers the character hitbox and…". Currently it lowers the
-  hurtbox, so high attacks like 5LP pass over it. What comes after "and"?
-- **Projectiles**: planned. The engine needs a projectile object (own hitbox, speed, lifetime, clash rules);
-  it will be added with the first projectile move.
-- **Mechanics from Darkstalkers, SSF2T and Third Strike** are expected later. The move data already has room for
-  per-frame properties; cancels, chains, parries, guard cancels and similar systems become new fields and states.
+Other numbers: 1000 health; walk 2.5 px per frame forward, 2 back; jumps have 4 frames on the ground first, last
+about 41 frames and go about 105 px high; wakeup 40 frames (80 after heavy Leopard Strike).
+
+## Planned
+
+- **Projectiles.** The engine needs a projectile object (own hitbox, speed, lifetime, clash rules); it will be added
+  with the first projectile move.
+- **Mechanics from Darkstalkers, SSF2T and Third Strike.** The move data has room for per-frame properties; systems
+  like parries or guard cancels become new fields and states.
 
 ## Where to change things
 
 | What | File |
 | --- | --- |
 | A move's numbers and boxes | `src/characters/shoto/moves.ts` |
-| Which input does which move, motions, walk and jump, hurtboxes | `src/characters/shoto/character.ts` |
-| Rules for the whole game (meter, buffer, CE window, wakeup, gravity) | `src/config.ts` |
+| Which input does which move, motions, walk, jump, dash, back hop, hurtboxes, hitstop table | `src/characters/shoto/character.ts` |
+| Rules for the whole game (meter, buffers, CE window, double-tap window, proximity guard, wakeup, gravity) | `src/config.ts` |
 | What every move field means | `src/moves/types.ts` |
 | Air block and air hit defaults | `canAirBlock` and `airHitResult` in `src/moves/compile.ts` |
+| Chains, cancels, blocking, dash | `src/sim/world.ts` |
 | Placeholder animation | `src/characters/shoto/poses.ts` |

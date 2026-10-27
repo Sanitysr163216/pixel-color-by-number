@@ -17,7 +17,10 @@ export interface CompiledMove {
   name: string;
   kind: MoveKind;
   strength: Strength;
+  /** How it has to be blocked when done from the ground. */
   guard: Guard;
+  /** How it has to be blocked when done in the air (overhead unless the move says otherwise). */
+  airGuard: Guard;
   startup: number;
   active: number;
   recovery: number;
@@ -26,7 +29,8 @@ export interface CompiledMove {
   damage: number;
   hitstun: number;
   blockstun: number;
-  hitstop: number;
+  /** The move's own hitstop, or null to use the character's hitstop table. */
+  hitstop: number | null;
   knockback: { distance: number; speed: number };
   /** Move frames (1 = first startup frame) where each hitbox phase exists. */
   hitPhases: { from: number; to: number; boxes: UBox[]; hit: number }[];
@@ -109,8 +113,9 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
     name: m.name,
     kind: m.kind,
     strength: m.strength,
+    guard: m.guard ?? 'mid',
     // Jumping attacks have to be blocked standing unless the move says otherwise.
-    guard: m.guard ?? (id.startsWith('j.') ? 'overhead' : 'mid'),
+    airGuard: m.guard ?? 'overhead',
     startup: m.startup,
     active: m.active,
     recovery: m.recovery,
@@ -118,7 +123,7 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
     damage: m.damage,
     hitstun: m.hitstun,
     blockstun: m.blockstun,
-    hitstop: m.hitstop ?? defaults.hitstop,
+    hitstop: m.hitstop ?? null,
     knockback: { distance: px(knockback.distance), speed: px(knockback.speed) },
     hitPhases,
     hurtPhases,

@@ -73,9 +73,12 @@ export interface MoveData {
   hitstun: number;
   /** Frames the opponent can't act after blocking (after hitstop). */
   blockstun: number;
-  /** Default 'mid'; jumping attacks default to 'overhead' (must be blocked standing). */
+  /** Default 'mid'. Any move done in the air (after a jump or back hop) defaults to 'overhead'. */
   guard?: Guard;
-  /** Frames both fighters freeze when the move connects. Default by strength: L 7, M 9, H 11. */
+  /**
+   * Frames both fighters freeze when the move connects, whatever the situation.
+   * Leave it out to use the character's hitstop table (see DEFAULT_HITSTOP in src/config.ts).
+   */
   hitstop?: number;
   /**
    * How far (px) and how fast (px per frame) the opponent slides away on hit or block.

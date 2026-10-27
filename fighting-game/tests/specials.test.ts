@@ -107,7 +107,7 @@ describe('special moves in the game', () => {
 
 describe('empty moves and Chakra Enhance', () => {
   it('buttons with no move do nothing, and the fighter keeps walking or crouching', () => {
-    for (const [dir, button, slot] of [[5, 'LK', '5LK'], [6, 'HK', '5HK'], [2, 'LP', '2LP'], [3, 'MK', '2MK']] as const) {
+    for (const [dir, button, slot] of [[5, 'LK', '5LK'], [6, 'HP', '5HP'], [2, 'LP', '2LP'], [3, 'MK', '2MK']] as const) {
       const w = newWorld(250);
       const p1 = w.fighters[0];
       play(w, [inp(dir, [button])]);
@@ -117,14 +117,14 @@ describe('empty moves and Chakra Enhance', () => {
     }
   });
 
-  it('a CE input is recognised, but nothing happens while the CE move is not made', () => {
+  it('while the CE move is not made, two punches do the normal special (heaviest button) and spend nothing', () => {
     const w = newWorld(250);
     const p1 = w.fighters[0];
     p1.meter = 500;
     play(w, [inp(4), inp(2), inp(1), inp(6, ['LP', 'MP'])]);
-    expect(p1.state).toBe('ground');
+    expect(p1.move?.id).toBe('leopard.M');
     expect(p1.meter).toBe(500);
-    expect(p1.lastCommand).toBe('CE Leopard Strike: NOT MADE YET');
+    expect(p1.lastCommand).toBe('LEOPARD STRIKE M (CE NOT MADE YET)');
   });
 
   it('with a CE move: two punches start it and spend one bar', () => {
@@ -137,17 +137,16 @@ describe('empty moves and Chakra Enhance', () => {
     expect(p1.meter).toBe(150);
   });
 
-  it('with a CE move: the second punch one frame later upgrades the special', () => {
+  it('with a CE move: the two punches must be pressed on exactly the same frame', () => {
     const withCE = testCharacter({ leopardCE });
     const w = newWorld(250, [withCE, withCE]);
     const p1 = w.fighters[0];
     p1.meter = 100;
     play(w, [inp(4), inp(2), inp(1), inp(6, ['LP'])]);
     expect(p1.move?.id).toBe('leopard.L');
-    play(w, [inp(6, ['MP'])]);
-    expect(p1.move?.id).toBe('leopard.CE');
-    expect(p1.moveFrame).toBe(2);
-    expect(p1.meter).toBe(0);
+    play(w, [inp(6, ['MP'])]); // one frame late
+    expect(p1.move?.id).toBe('leopard.L');
+    expect(p1.meter).toBe(100);
   });
 
   it('with a CE move but less than a bar: the normal version of the heaviest button', () => {

@@ -22,7 +22,7 @@ describe('hitting and blocking', () => {
   });
 
   it('high moves whiff on crouching opponents, mid ones hit', () => {
-    for (const [id, hits] of [['5LP', false], ['5HP', false], ['5MP', true]] as const) {
+    for (const [id, hits] of [['5LP', false], ['5HK', false], ['5MP', true]] as const) {
       const w = newWorld(50);
       const p2 = w.fighters[1];
       play(w, inputsFor(id), [inp2(2)]);
@@ -93,14 +93,14 @@ describe('hitting and blocking', () => {
     p2.x = wall;
     p1.x = wall - px(50);
     const start = p1.x;
-    play(w, [inp(5, ['HP'])]);
+    play(w, [inp(5, ['HK'])]);
     hold(w, 40);
     expect(p2.x).toBe(wall);
     expect((start - p1.x) / px(1)).toBe(32);
   });
 
   it('each move has its own hitstun: frame advantage = hitstun + 1 - active - recovery', () => {
-    for (const id of ['5LP', '5MP', '5HP']) {
+    for (const id of ['5LP', '5MP', '5HK']) {
       const m = shoto.normals[id as '5LP']!;
       const w = newWorld(46);
       play(w, inputsFor(id));

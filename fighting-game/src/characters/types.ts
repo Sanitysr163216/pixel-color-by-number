@@ -1,3 +1,4 @@
+import type { HitstopTable } from '../config';
 import type { ButtonName } from '../input/buttons';
 import type { Box, MoveData } from '../moves/types';
 
@@ -63,6 +64,12 @@ export interface CharacterData {
     forward: number;
     back: number;
   };
+  /** Double-tap forward: a continuous dash while forward is held, px per frame. */
+  dash: { speed: number };
+  /** Double-tap back: a short hop backwards. Speeds in px per frame. */
+  backHop: { up: number; back: number };
+  /** Changes to the game's hitstop table for this character's moves (see DEFAULT_HITSTOP in src/config.ts). */
+  hitstop?: Partial<HitstopTable>;
   hurtboxes: { stand: Box[]; crouch: Box[]; air: Box[] };
   /** The boxes that stop fighters from walking through each other. */
   pushboxes: { stand: Box; crouch: Box; air: Box; down: Box };

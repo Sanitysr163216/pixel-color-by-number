@@ -1,3 +1,4 @@
+import { DEFAULT_HITSTOP, type HitstopTable } from '../config';
 import { px } from '../core/units';
 import type { ButtonName } from '../input/buttons';
 import { compileMove, ubox, type CompiledMove, type UBox } from '../moves/compile';
@@ -30,6 +31,9 @@ export interface CompiledCharacter {
   walkForward: number;
   walkBack: number;
   jump: { squat: number; up: number; forward: number; back: number };
+  dash: { speed: number };
+  backHop: { up: number; back: number };
+  hitstop: HitstopTable;
   hurt: { stand: UBox[]; crouch: UBox[]; air: UBox[] };
   push: { stand: UBox; crouch: UBox; air: UBox; down: UBox };
   normals: Record<NormalSlot, CompiledMove | null>;
@@ -52,6 +56,9 @@ export function compileCharacter(c: CharacterData): CompiledCharacter {
     walkForward: px(c.walkForward),
     walkBack: px(c.walkBack),
     jump: { squat: c.jump.squat, up: px(c.jump.up), forward: px(c.jump.forward), back: px(c.jump.back) },
+    dash: { speed: px(c.dash.speed) },
+    backHop: { up: px(c.backHop.up), back: px(c.backHop.back) },
+    hitstop: { ...DEFAULT_HITSTOP, ...c.hitstop },
     hurt: { stand: c.hurtboxes.stand.map(ubox), crouch: c.hurtboxes.crouch.map(ubox), air: c.hurtboxes.air.map(ubox) },
     push: {
       stand: ubox(c.pushboxes.stand),
