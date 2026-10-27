@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shoto Fighting Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Barlow:wght@400;600&family=Barlow+Condensed:wght@600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: an arcade cabinet. The screen is the hero; the instruction card (keys, move list) sits under it. */
+  :root {
+    --cabinet: #0e0c12;
+    --bezel: #1d1923;
+    --panel: #16131b;
+    --line: #2f2937;
+    --ink: #ece6dc;
+    --muted: #a39ab0;
+    --gold: #f2c22a;
+    --red: #e0453a;
+    --hit: #ff5a4a;
+    --hurt: #5ab8ff;
+    --push: #ffe066;
+    --font-display: 'Silkscreen', 'Courier New', monospace;
+    --font-label: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+    --font-body: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+    --font-data: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { background: var(--cabinet); color: var(--ink); }
+  body {
+    margin: 0;
+    font: 15px/1.55 var(--font-body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .page { max-width: 1100px; margin: 0 auto; padding-block: 20px 48px; display: grid; gap: 28px; }
+
+  .marquee { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; }
+  .marquee h1 { margin: 0; font: 400 clamp(22px, 4vw, 34px)/1.1 var(--font-display); color: var(--gold); letter-spacing: 0.04em; text-wrap: balance; }
+  .marquee p { margin: 0; font: 600 14px/1.3 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  .cabinet { display: grid; justify-items: center; gap: 14px; }
+  .bezel { background: var(--bezel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; max-width: 100%; box-sizing: border-box; position: relative; }
+  #screen { display: block; image-rendering: pixelated; image-rendering: crisp-edges; background: #000; max-width: 100%; aspect-ratio: 304 / 224; outline: none; }
+  #screen:focus-visible { box-shadow: 0 0 0 2px var(--gold); }
+  .hint { position: absolute; inset: 12px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.55); border: 0; color: var(--ink); font: 400 clamp(12px, 2.4vw, 18px)/1.4 var(--font-display); cursor: pointer; text-align: center; padding: 16px; }
+  .hint[hidden] { display: none; }
+
+  .toolbar { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .toolbar button {
+    font: 600 14px/1 var(--font-label); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    padding: 9px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+  }
+  .toolbar button:hover { border-color: var(--muted); }
+  .toolbar button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .toolbar button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+  .toolbar kbd { font: 500 12px/1 var(--font-data); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 2px 5px; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; min-width: 0; }
+  h2 { margin: 0 0 10px; font: 600 15px/1.2 var(--font-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+  .keys dt { font: 500 13px/1.6 var(--font-data); color: var(--ink); white-space: nowrap; }
+  .keys dd { margin: 0; color: var(--muted); }
+  .card p { margin: 0 0 8px; color: var(--muted); max-width: 65ch; }
+  .card p:last-child { margin-bottom: 0; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border: 1px solid; margin-right: 6px; vertical-align: -1px; }
+  .swatch.hit { border-color: var(--hit); background: rgba(255, 90, 74, 0.35); }
+  .swatch.hurt { border-color: var(--hurt); background: rgba(90, 184, 255, 0.3); }
+  .swatch.push { border-color: var(--push); }
+
+  .moves { display: grid; gap: 10px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 14px; }
+  td:nth-child(2) { white-space: nowrap; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 13px/1.2 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: var(--panel); }
+  td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+  td.input { font-family: var(--font-data); white-space: nowrap; color: var(--gold); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .group td { background: var(--bezel); font: 600 13px/1.2 var(--font-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+  .empty { color: var(--muted); margin: 0; }
+
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="marquee">
+    <h1>Shoto</h1>
+    <p>Character 1 · 60 frames per second · 3 punches, 3 kicks</p>
+  </header>
+
+  <section class="cabinet" aria-label="Game">
+    <div class="bezel" id="bezel">
+      <canvas id="screen" width="304" height="224" tabindex="0" aria-label="Game screen"></canvas>
+      <button class="hint" id="hint" type="button">Click here, then play with the keys below</button>
+    </div>
+    <div class="toolbar" id="toolbar">
+      <button type="button" id="btn-mode" data-key="Digit7">Training <kbd>7</kbd></button>
+      <button type="button" id="btn-boxes" data-key="Digit1">Boxes <kbd>1</kbd></button>
+      <button type="button" id="btn-info" data-key="Digit2">Frame data <kbd>2</kbd></button>
+      <button type="button" id="btn-pause" data-key="Digit3">Pause <kbd>3</kbd></button>
+      <button type="button" id="btn-step" data-key="Digit4">Next frame <kbd>4</kbd></button>
+      <button type="button" id="btn-stance" data-key="Digit5">Dummy: stand <kbd>5</kbd></button>
+      <button type="button" id="btn-block" data-key="Digit6">Dummy blocks <kbd>6</kbd></button>
+      <button type="button" id="btn-meter" data-key="Digit8">Full meter <kbd>8</kbd></button>
+      <button type="button" id="btn-reset" data-key="Digit0">Reset <kbd>0</kbd></button>
+    </div>
+  </section>
+
+  <section class="card-grid" aria-label="Controls">
+    <div class="card">
+      <h2>Player 1</h2>
+      <dl class="keys">
+        <dt>W A S D</dt><dd>Move, jump (up), crouch (down)</dd>
+        <dt>U I O</dt><dd>Light, medium, heavy punch</dd>
+        <dt>J K L</dt><dd>Light, medium, heavy kick</dd>
+        <dt>Hold back</dt><dd>Block. Hold down-back for lows; overheads need a standing block</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Player 2 (versus)</h2>
+      <dl class="keys">
+        <dt>Arrows</dt><dd>Move</dd>
+        <dt>Num 4 5 6</dt><dd>Light, medium, heavy punch</dd>
+        <dt>Num 1 2 3</dt><dd>Light, medium, heavy kick</dd>
+        <dt>Gamepad</dt><dd>X Y RB = punches, A B RT = kicks. First pad is player 1, second is player 2</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Reading the screen</h2>
+      <p><span class="swatch hit"></span>Hitbox, only on active frames. Orange once it has connected.</p>
+      <p><span class="swatch hurt"></span>Hurtbox. None while invulnerable (flip, knockdown).</p>
+      <p><span class="swatch push"></span>Pushbox, keeps the fighters apart.</p>
+      <p>Top left: the last move's startup (S), active (A) and recovery (R) frames, then the frame advantage once both fighters can act again. Left column: your inputs in numpad notation (6 = forward) with frames held.</p>
+    </div>
+  </section>
+
+  <section class="moves" aria-labelledby="moves-title">
+    <h2 id="moves-title">Move list</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Input</th><th>Move</th><th class="num">Startup</th><th class="num">Active</th><th class="num">Recovery</th><th class="num">Damage</th><th class="num">Hitstun</th><th>Notes</th></tr>
+        </thead>
+        <tbody id="move-list"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="not-made"></p>
+  </section>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
