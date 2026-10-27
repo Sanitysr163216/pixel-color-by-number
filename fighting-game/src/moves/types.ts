@@ -73,7 +73,7 @@ export interface MoveData {
   hitstun: number;
   /** Frames the opponent can't act after blocking (after hitstop). */
   blockstun: number;
-  /** Default 'mid'. */
+  /** Default 'mid'; jumping attacks default to 'overhead' (must be blocked standing). */
   guard?: Guard;
   /** Frames both fighters freeze when the move connects. Default by strength: L 7, M 9, H 11. */
   hitstop?: number;

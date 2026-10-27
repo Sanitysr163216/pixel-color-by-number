@@ -109,7 +109,8 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
     name: m.name,
     kind: m.kind,
     strength: m.strength,
-    guard: m.guard ?? 'mid',
+    // Jumping attacks have to be blocked standing unless the move says otherwise.
+    guard: m.guard ?? (id.startsWith('j.') ? 'overhead' : 'mid'),
     startup: m.startup,
     active: m.active,
     recovery: m.recovery,

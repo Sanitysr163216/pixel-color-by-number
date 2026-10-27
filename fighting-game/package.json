@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:single": "npm run build && node scripts/single-file.mjs dist/shoto.html",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

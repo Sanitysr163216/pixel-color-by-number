@@ -111,6 +111,19 @@ describe('blocking in the air', () => {
   });
 });
 
+describe('blocking jumping attacks on the ground', () => {
+  it('jumping attacks must be blocked standing (default)', () => {
+    for (const [block, hit] of [[1, true], [4, false]] as const) {
+      const w = newWorld(40, [jumper, jumper]);
+      const [p1, p2] = w.fighters;
+      putInAir(p1, 30, 0);
+      play(w, [inp(5, ['LP'])], [inp2(block)]);
+      hold(w, 6, NEUTRAL, inp2(block));
+      expect(p2.health < 1000, `block ${block}`).toBe(hit);
+    }
+  });
+});
+
 describe('acting in the air', () => {
   it('after an air attack, no more attacks until landing', () => {
     const w = newWorld(250, [jumper, jumper]);
