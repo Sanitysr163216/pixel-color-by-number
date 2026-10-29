@@ -9,8 +9,11 @@ export const KICKS = BTN.LK | BTN.MK | BTN.HK;
 export type Strength = 'L' | 'M' | 'H';
 export const STRENGTH_OF: Record<ButtonName, Strength> = { LP: 'L', MP: 'M', HP: 'H', LK: 'L', MK: 'M', HK: 'H' };
 
-/** Heaviest first: when several buttons are pressed on one frame, the heaviest one wins. */
-export const HEAVIEST_FIRST: readonly ButtonName[] = ['HP', 'HK', 'MP', 'MK', 'LP', 'LK'];
+/**
+ * Lightest first: when several buttons are pressed on the same frame and no move uses that combination,
+ * the lightest one comes out (a punch before a kick of the same strength).
+ */
+export const LIGHTEST_FIRST: readonly ButtonName[] = ['LP', 'LK', 'MP', 'MK', 'HP', 'HK'];
 
 /**
  * One player's controller on one frame.

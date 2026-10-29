@@ -201,7 +201,7 @@ describe('chains', () => {
     play(w, [inp(dir, [button])]);
   };
 
-  it('a normal chains into a different normal pressed during hitstun (presses during hitstop count)', () => {
+  it('a normal chains into a different normal pressed during hitstop', () => {
     const w = newWorld(40);
     const [p1, p2] = w.fighters;
     play(w, [inp(5, ['LP'])]);
@@ -229,14 +229,50 @@ describe('chains', () => {
     expect(p1.lastCommand).toBe("5LP: CAN'T CHAIN INTO ITSELF");
   });
 
-  it('no chains when the first normal is blocked', () => {
+  it('chains work on block too', () => {
     const w = newWorld(40);
     const [p1, p2] = w.fighters;
     play(w, [inp(5, ['LP'])], [inp2(4)]);
     until(w, () => p2.state === 'blockstun', NEUTRAL, inp2(4));
     play(w, [inp(5, ['MP'])]);
-    hold(w, 20);
-    expect(p1.lastMove?.id).toBe('5LP');
+    until(w, () => p1.move?.id === '5MP');
+    expect(p1.chained).toBe(true);
+  });
+
+  it('the second normal must be pressed during the hitstop (or 1 frame before the hit, as a buffer)', () => {
+    // 5LP connects on frame 5 and freezes both for 7 frames (6 to 12); the attacker moves again on frame 13.
+    const cases: [string, number, boolean][] = [
+      ['last frame of hitstop', 12, true],
+      ['first frame after hitstop', 13, false],
+      ['1 frame before the hit', 4, true],
+      ['2 frames before the hit', 3, false],
+    ];
+    for (const [label, pressFrame, chains] of cases) {
+      const w = newWorld(40);
+      const p1 = w.fighters[0];
+      const inputs = Array.from({ length: 16 }, (_, i) => (i === 0 ? inp(5, ['LP']) : i + 1 === pressFrame ? inp(5, ['MP']) : NEUTRAL));
+      play(w, inputs);
+      expect(w.fighters[1].combo.hits, label).toBeGreaterThan(0);
+      expect(p1.move?.id === '5MP' && p1.chained, label).toBe(chains);
+    }
+  });
+
+  it('a blockstring can not use the same chain twice either', () => {
+    const still = { knockback: { distance: 0, speed: 1 } };
+    const tester = testCharacter({ normals: { '5LP': { ...standLP, ...still }, '5MP': { ...standMP, ...still } } });
+    const w = newWorld(40, [tester, tester]);
+    const [p1, p2] = w.fighters;
+    const pressAfterBlock = (blocks: number, button: 'LP' | 'MP') => {
+      until(w, () => p2.meter === 2 * blocks, NEUTRAL, inp2(4));
+      play(w, [inp(5, [button])], [inp2(4)]);
+    };
+    play(w, [inp(5, ['LP'])], [inp2(4)]);
+    pressAfterBlock(1, 'MP');
+    pressAfterBlock(2, 'LP');
+    pressAfterBlock(3, 'MP');
+    hold(w, 10, NEUTRAL, inp2(4));
+    expect(p2.health).toBe(1000);
+    expect(p1.lastCommand).toBe('5LP > 5MP: CHAIN ALREADY USED');
   });
 
   it('a combo can not use the same chain twice; the next combo can', () => {
@@ -262,6 +298,45 @@ describe('chains', () => {
 describe('special cancels', () => {
   const leopard = (w: World, p2: ReturnType<typeof inp2>) =>
     play(w, [inp(4), inp(2), inp(1), inp(6, ['LP'])], [p2, p2, p2, p2]);
+
+  it('only from the hit until the normal\'s active frames end', () => {
+    // 5LP: hit on frame 5 (its first active frame), hitstop on frames 6–12, its last active frame is played
+    // on frame 13, recovery starts on frame 14.
+    for (const [pressFrame, cancels] of [[13, true], [14, false]] as const) {
+      const w = newWorld(40);
+      const p1 = w.fighters[0];
+      const inputs = Array.from({ length: pressFrame }, () => NEUTRAL);
+      inputs[0] = inp(5, ['LP']);
+      inputs[pressFrame - 4] = inp(4);
+      inputs[pressFrame - 3] = inp(2);
+      inputs[pressFrame - 2] = inp(1);
+      inputs[pressFrame - 1] = inp(6, ['LP']);
+      play(w, inputs);
+      expect(p1.move?.id === 'leopard.L', `pressed on frame ${pressFrame}`).toBe(cancels);
+    }
+  });
+
+  it('a special pressed up to 3 frames before the normal connects still cancels it', () => {
+    // 5HK connects on frame 10.
+    for (const [pressFrame, cancels] of [[7, true], [6, false]] as const) {
+      const w = newWorld(46);
+      const p1 = w.fighters[0];
+      const inputs = Array.from({ length: pressFrame }, () => NEUTRAL);
+      inputs[0] = inp(5, ['HK']);
+      inputs[pressFrame - 4] = inp(4);
+      inputs[pressFrame - 3] = inp(2);
+      inputs[pressFrame - 2] = inp(1);
+      inputs[pressFrame - 1] = inp(6, ['LP']);
+      play(w, inputs);
+      let cancelled = false;
+      for (let i = 0; i < 30; i++) {
+        hold(w, 1);
+        if (p1.move?.id === 'leopard.L') cancelled = true;
+      }
+      expect(w.fighters[1].health).toBeLessThan(1000);
+      expect(cancelled, `pressed on frame ${pressFrame}`).toBe(cancels);
+    }
+  });
 
   it('a normal cancels into a special on hit and on block', () => {
     for (const block of [false, true]) {

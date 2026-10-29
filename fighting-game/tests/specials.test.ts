@@ -117,11 +117,11 @@ describe('empty moves and Chakra Enhance', () => {
     }
   });
 
-  it('while the CE move is not made, two punches do the normal special (heaviest button) and spend nothing', () => {
+  it('while the CE move is not made, two punches do the lighter button\'s special and spend nothing', () => {
     const w = newWorld(250);
     const p1 = w.fighters[0];
     p1.meter = 500;
-    play(w, [inp(4), inp(2), inp(1), inp(6, ['LP', 'MP'])]);
+    play(w, [inp(4), inp(2), inp(1), inp(6, ['MP', 'HP'])]);
     expect(p1.move?.id).toBe('leopard.M');
     expect(p1.meter).toBe(500);
     expect(p1.lastCommand).toBe('LEOPARD STRIKE M (CE NOT MADE YET)');
@@ -149,14 +149,28 @@ describe('empty moves and Chakra Enhance', () => {
     expect(p1.meter).toBe(100);
   });
 
-  it('with a CE move but less than a bar: the normal version of the heaviest button', () => {
+  it('with a CE move but less than a bar: the lighter button\'s version', () => {
     const withCE = testCharacter({ leopardCE });
     const w = newWorld(250, [withCE, withCE]);
     const p1 = w.fighters[0];
     p1.meter = 99;
-    play(w, [inp(4), inp(2), inp(1), inp(6, ['LP', 'MP'])]);
-    expect(p1.move?.id).toBe('leopard.M');
+    play(w, [inp(4), inp(2), inp(1), inp(6, ['LP', 'HP'])]);
+    expect(p1.move?.id).toBe('leopard.L');
     expect(p1.meter).toBe(99);
+  });
+
+  it('two buttons on the same frame with no two-button move: the lighter one comes out', () => {
+    for (const [buttons, result] of [
+      [['LP', 'HP'], '5LP'],
+      [['MP', 'HK'], '5MP'],
+      [['HP', 'HK'], null], // same strength: the punch, and 5HP is not made yet
+      [['LK', 'HK'], null], // 5LK is not made yet, so nothing
+    ] as const) {
+      const w = newWorld(250);
+      const p1 = w.fighters[0];
+      play(w, [inp(5, [...buttons])]);
+      expect(p1.move?.id ?? null, buttons.join('+')).toBe(result);
+    }
   });
 
   it('two buttons too far apart are not a CE', () => {

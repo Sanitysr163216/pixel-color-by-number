@@ -4,8 +4,8 @@ import type { CompiledCharacter, CompiledSpecial } from '../characters/compile';
 import type { NormalSlot } from '../characters/types';
 import {
   BTN,
-  HEAVIEST_FIRST,
   KICKS,
+  LIGHTEST_FIRST,
   PUNCHES,
   STRENGTH_OF,
   countButtons,
@@ -123,8 +123,14 @@ export class World {
     const contacts = fs.map((f) => (frozen[f.index] ? null : this.findContact(f)));
     contacts.forEach((c, i) => c && this.applyContact(fs[i], c));
 
-    // A combo lasts until the defender leaves hit stun; after that its chains can be used again.
-    for (const f of fs) if (!isStunned(this.other(f))) f.chainsUsed.length = 0;
+    for (const f of fs) {
+      // A combo (or blockstring) lasts until the defender leaves hit stun or blockstun; then its chains can be used again.
+      const o = this.other(f);
+      if (!isStunned(o) && o.state !== 'blockstun') f.chainsUsed.length = 0;
+      // Special cancels: remember the last frame the move was still in its active frames after connecting.
+      const m = f.move;
+      if (f.state === 'move' && m && f.cancel && f.moveFrame <= m.startup + m.active) f.cancel.activeUntil = this.frame;
+    }
     this.finishMeasure();
   }
 
@@ -292,20 +298,34 @@ export class World {
   }
 
   /**
-   * Cancels a move that connected. Chains: any normal into a different normal, pressed while the opponent is
-   * in hitstun, each chain once per combo. Special cancels: from a normal (not a command normal) that was not
-   * itself reached by a chain, into a special, CE or Chakra special. Presses during hitstop count.
+   * Cancels a move that connected (hit or block).
+   * Chains: any normal into a different normal pressed during the hitstop, each chain once per combo.
+   * Special cancels: from a normal (not a command normal) that was not itself reached by a chain, into a
+   * special, CE or Chakra special pressed from the contact until the normal's active frames end.
+   * The usual input buffer also counts presses made just before the contact.
    */
   private tryCancel(f: Fighter): boolean {
     const m = f.move!;
-    if (!f.contactFrame || f.moveFromAir) return false;
-    const chain = (m.kind === 'normal' || m.kind === 'command') && this.other(f).state === 'hitstun';
-    const special = m.kind === 'normal' && !f.chained;
-    if (!chain && !special) return false;
-    for (let age = 0; age < this.frame - f.contactFrame && age < f.input.length; age++) {
+    const w = f.cancel;
+    if (!w || f.moveFromAir) return false;
+    const chains = m.kind === 'normal' || m.kind === 'command';
+    const specials = m.kind === 'normal' && !f.chained;
+    if (!chains && !specials) return false;
+    // This frame still counts as active if the move hasn't played its last active frame yet.
+    const activeUntil = f.moveFrame < m.startup + m.active ? this.frame : w.activeUntil;
+    const { normals: normalBuffer, specials: specialBuffer } = RULES.inputBuffer;
+    for (let age = 0; age < f.input.length; age++) {
+      const pressedAt = this.frame - age;
+      if (pressedAt < w.from - Math.max(normalBuffer, specialBuffer)) break;
       const frame = f.input.get(age)!;
       const fresh = frame.pressed & ~frame.used;
-      if (fresh && this.resolve(f, age, fresh, false, { specials: special, normals: chain, chainFrom: m })) return true;
+      if (!fresh) continue;
+      const allow = {
+        normals: chains && pressedAt >= w.from - normalBuffer && pressedAt <= w.chainUntil,
+        specials: specials && pressedAt >= w.from - specialBuffer && pressedAt <= activeUntil,
+        chainFrom: m,
+      };
+      if ((allow.normals || allow.specials) && this.resolve(f, age, fresh, false, allow)) return true;
     }
     return false;
   }
@@ -335,31 +355,26 @@ export class World {
         const together = this.pressedTogether(f, age, type);
         if (countButtons(together) >= 2) return this.startCE(f, sp, together, age, type);
         this.use(f, age, pressed);
-        return this.startSpecial(f, sp, HEAVIEST_FIRST.find((b) => pressed & BTN[b])!);
+        return this.startSpecial(f, sp, LIGHTEST_FIRST.find((b) => pressed & BTN[b])!);
       }
     }
     if (!allow.normals) return false;
+    // Several buttons on one frame with no move for that combination: only the lightest one counts.
+    const button = LIGHTEST_FIRST.find((b) => fresh & BTN[b])!;
+    this.use(f, age, fresh);
     if (!air) {
       const dir = numpad(frame.x, frame.y, f.facing);
-      for (const cn of c.commandNormals) {
-        if (cn.direction !== dir || !(fresh & BTN[cn.button])) continue;
-        this.use(f, age, BTN[cn.button]);
-        return this.startNormal(f, cn.move, false, allow.chainFrom);
-      }
+      const cn = c.commandNormals.find((n) => n.direction === dir && n.button === button);
+      if (cn) return this.startNormal(f, cn.move, false, allow.chainFrom);
     }
     const stance = air ? 'j.' : frame.y < 0 ? '2' : '5';
-    for (const b of HEAVIEST_FIRST) {
-      if (!(fresh & BTN[b])) continue;
-      const slot = `${stance}${b}` as NormalSlot;
-      this.use(f, age, BTN[b]);
-      const m = c.normals[slot];
-      if (!m) {
-        this.note(f, `${slot}: EMPTY SLOT`);
-        continue;
-      }
-      return this.startNormal(f, m, stance === '2', allow.chainFrom);
+    const slot = `${stance}${button}` as NormalSlot;
+    const m = c.normals[slot];
+    if (!m) {
+      this.note(f, `${slot}: EMPTY SLOT`);
+      return false;
     }
-    return false;
+    return this.startNormal(f, m, stance === '2', allow.chainFrom);
   }
 
   /** Starts a normal. When chaining: only into a different normal, and each chain only once per combo. */
@@ -394,7 +409,7 @@ export class World {
     return mask;
   }
 
-  /** Two buttons: the CE version if it exists and there is a bar to spend, otherwise the normal special. */
+  /** Two buttons: the CE version if it exists and there is a bar to spend, otherwise the lighter button's special. */
   private startCE(f: Fighter, sp: CompiledSpecial, together: number, age: number, type: number): boolean {
     for (let a = age; a <= age + RULES.ceWindow; a++) this.use(f, a, type);
     const ce = sp.CE;
@@ -403,7 +418,7 @@ export class World {
       this.startMove(f, ce, null);
       return true;
     }
-    const started = this.startSpecial(f, sp, HEAVIEST_FIRST.find((b) => together & BTN[b])!);
+    const started = this.startSpecial(f, sp, LIGHTEST_FIRST.find((b) => together & BTN[b])!);
     if (started) this.note(f, `${f.lastCommand} (${ce ? 'NO BAR FOR CE' : 'CE NOT MADE YET'})`);
     return started;
   }
@@ -454,7 +469,7 @@ export class World {
     f.moveFromAir = air;
     f.special = special;
     f.hitsDone = 0;
-    f.contactFrame = 0;
+    f.cancel = null;
     f.chained = false;
     f.walk = 0;
     f.guarding = false;
@@ -668,12 +683,13 @@ export class World {
     const def = this.other(att);
     const m = c.move;
     att.hitsDone |= 1 << c.hit;
-    if (!att.contactFrame) att.contactFrame = this.frame;
     const air = this.isAirborne(def);
     const blocked = this.blocks(def, att, m, c.fromAir, air);
     const stop = this.hitstop(att, m, c.fromAir, air, blocked);
     att.hitstop = Math.max(att.hitstop, stop);
     def.hitstop = Math.max(def.hitstop, stop);
+    if (!att.cancel) att.cancel = { from: this.frame, chainUntil: this.frame + stop, activeUntil: this.frame };
+    else att.cancel.chainUntil = Math.max(att.cancel.chainUntil, this.frame + stop);
     const away = def.x > att.x ? 1 : def.x < att.x ? -1 : att.facing;
     const knockback = { left: m.knockback.distance, speed: m.knockback.speed, dir: away, from: att.index };
     def.guarding = false;

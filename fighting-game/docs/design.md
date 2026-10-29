@@ -34,11 +34,12 @@ Every number here lives in code and can be changed there (see "Where to change t
 - Motions allow other directions in between, because a stick rolls through them:
   4-2-1-6 also matches 4,1,2,1,2,3,6. 4-2-1-6 must be done within 20 frames, 6-2-3 within 15.
   A half circle forward (4-1-2-3-6) does not count as 4-2-1-6.
-- **Input buffer**: a normal pressed 1 frame before the fighter is free still comes out; specials, CE and Chakra
-  specials are remembered for 3 frames.
+- **Input buffer**, at any moment of the round: a normal pressed 1 frame before it can come out still comes out;
+  specials, CE and Chakra specials are remembered for 3 frames.
 - **CE (Chakra Enhance)**: the special's motion with two punches (or two kicks) on exactly the same frame. Costs 1 bar.
-  With no bar, or while the CE move isn't made yet, the two buttons do the normal special (the heavier button's
-  version).
+  With no bar, or while the CE move isn't made yet, the two buttons do the lighter button's version of the special.
+- **Several buttons on the same frame** with no move for that combination: only the lightest one comes out
+  (LP + HP = LP). Between a punch and a kick of the same strength, the punch.
 - **Moves not made yet** (blank in the spec): the input is read, nothing happens. Training mode shows the input
   as "EMPTY SLOT". The list is under Character 1 below.
 - **Walk** forward and back, **jump** forward, neutral or backward.
@@ -63,30 +64,22 @@ Every number here lives in code and can be changed there (see "Where to change t
 | Hit in the air by a heavy or a special done from the ground | Knocked down like a sweep; the wakeup count starts when they hit the ground. Rising Push also knocks down an opponent on the ground. |
 | Acting in the air | After using a move in the air, or after being hit in the air, a fighter can't act until landing. Blocking in the air gives the air attack back. |
 | Knockdown and wakeup | Invulnerable from the hit until wakeup. The hurtbox and the buttons come back on the same frame. |
-| Chains | A normal that hits can be cancelled into a different normal (command normals included) pressed while the opponent is in hitstun. A combo can't use the same chain twice (the same move into the same move). |
-| Special cancels | A normal (not a command normal) can be cancelled into a special, CE or Chakra special, unless that normal was itself reached by a chain. |
+| Chains | A normal that connects, on hit or block, can be cancelled into a different normal (command normals included) pressed during the hitstop, or 1 frame before the hit as a buffer. The new normal starts when the hitstop ends. A combo or blockstring can't use the same chain twice: 5LP into 5MP once, while 5MP into 5LP is a different chain. No chains in the air. |
+| Special cancels | A normal (not a command normal) can be cancelled into a special, CE or Chakra special, on hit or block, unless that normal was itself reached by a chain. The special has to be pressed between the hit (or up to 3 frames before it, as a buffer) and the end of the normal's active frames. No cancels in the air. |
 | Combo counter | Counts every hit until the defender leaves hit stun; shown on the attacker's side from 2 hits; stays 2 seconds after the combo ends; a new combo of 2 or more hits replaces it. |
 | Meter | 10 bars of 100 points. Blocking: +2 per blocked hit for the defender; the attacker gets nothing for a blocked hit. Hitting: +3 × 1 / 2 / 3 for light / medium / heavy. |
 | CE | Alternate version of a special with two buttons, 1 bar. |
 | Chakra specials | Moves that cost 1–2 bars. |
 | Special properties | Per move, by frame: `invincible`, `airborne`, `vulnerable` (extra damage taken), hurtbox changes, movement. |
 
+Blockstrings still follow the air-block rules: a grounded heavy can't be blocked in the air even in the middle of a
+blockstring.
+
 ## Assumptions to confirm
 
-1. **Chains only on hit.** The spec says the second normal is pressed "within hitstun", so a blocked normal can't
-   chain. Should chains also work on block?
-2. **"The same chain"** is read as the same pair in the same order: 5LP into 5MP can be used once per combo, but
-   5MP into 5LP is a different chain.
-3. **Special cancels work on hit and on block**, at any time after the normal connects until it ends.
-4. **No chains or cancels in the air**, because a fighter can't act again after using a move in the air.
-5. **Presses during hitstop count for chains and special cancels.** With a 1-frame buffer for normals, chains
-   would otherwise need a press on one exact frame.
-6. **Blockstrings still follow the air-block rules**: a grounded heavy can't be blocked in the air even in the
-   middle of a blockstring.
-7. **Dash and back hop numbers** are estimates of Bishamon's, scaled to this character's size: dash 5 px per frame
-   (walk is 2.5); back hop leaves the ground at once, about 19 frames in the air and about 66 px back, no
-   invulnerability.
-8. **Landing during an air attack**: 2 frames before the fighter can act.
+1. **A blockstring can't reuse a chain either**, the same as a combo. Otherwise chains on block could loop forever.
+2. **Same-strength buttons together** (LP + LK): the punch comes out.
+3. **Landing during an air attack**: 2 frames before the fighter can act.
 
 ## Character 1: Shoto / "zoner"
 
@@ -114,7 +107,9 @@ Not made yet (the input is read, nothing happens): standing HP, LK, MK; crouchin
 jumping attack; both CE versions; the Chakra specials.
 
 Other numbers: 1000 health; walk 2.5 px per frame forward, 2 back; jumps have 4 frames on the ground first, last
-about 41 frames and go about 105 px high; wakeup 40 frames (80 after heavy Leopard Strike).
+about 41 frames and go about 105 px high; wakeup 40 frames (80 after heavy Leopard Strike). Dash and back hop are
+estimates of Bishamon's, scaled to this character's size: dash 5 px per frame; back hop leaves the ground at once,
+about 19 frames in the air and about 66 px back, no invulnerability.
 
 ## Planned
 

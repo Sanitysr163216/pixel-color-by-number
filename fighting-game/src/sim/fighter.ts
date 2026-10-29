@@ -71,8 +71,12 @@ export interface Fighter {
   special: { def: CompiledSpecial; button: ButtonName } | null;
   /** Hit numbers of the current move that already connected. */
   hitsDone: number;
-  /** World frame on which the current move first connected (hit or block); 0 = not yet. */
-  contactFrame: number;
+  /**
+   * Set when the current move first connects (hit or block), as world frames: when it connected, when the
+   * last hitstop ends (chains are pressed up to then) and the last frame it was still in its active frames
+   * (special cancels are pressed up to then).
+   */
+  cancel: { from: number; chainUntil: number; activeUntil: number } | null;
   /** The current move was started by chaining from another normal. */
   chained: boolean;
   /** Chains used in the current combo, as 'from>to' move ids. A combo can't repeat one. */
@@ -123,7 +127,7 @@ export function createFighter(index: 0 | 1, char: CompiledCharacter): Fighter {
     moveFromAir: false,
     special: null,
     hitsDone: 0,
-    contactFrame: 0,
+    cancel: null,
     chained: false,
     chainsUsed: [],
     stun: 0,
