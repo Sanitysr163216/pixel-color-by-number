@@ -60,6 +60,7 @@ export function inputsFor(id: string, facing = 1): RawInput[] {
   const button = (type: 'P' | 'K') => `${version}${type}` as ButtonName;
   if (special === 'leopard') return [i(4), i(2), i(1), i(6, [button('P')])];
   if (special === 'rising') return [i(6), i(2), i(3, [button('K')])];
+  if (special === 'flake') return [i(2), i(3), i(6, [button('P')])];
   const dir = Number(id[0]);
   return [i(dir, [id.slice(1) as ButtonName])];
 }

@@ -1,11 +1,11 @@
-import { FLOOR_Y, SCREEN_W, STAGE_W } from '../config';
+import { FLOOR_Y, SCREEN_H, SCREEN_W, STAGE_W } from '../config';
 import { SUB } from '../core/units';
 import { shotoPose } from '../characters/shoto/poses';
 import type { Game } from '../game/game';
 import { movePhase, type Fighter } from '../sim/fighter';
 import { place } from '../sim/boxes';
 import { drawFigure, type ScreenPoints } from './figure';
-import { rgb, type Framebuffer } from './framebuffer';
+import { Framebuffer, rgb, silhouette } from './framebuffer';
 import { Hud, centred } from './hud';
 import { drawBoxes, drawTrainingInfo } from './overlay';
 import { FIGHTER_PALETTES, UI } from './palette';
@@ -19,11 +19,17 @@ const DUST = rgb('#c8b8a8', 0.6);
 const GLOW = rgb('#ffe27a', 0.35);
 const GLOW_CORE = rgb('#fff8d0', 0.8);
 const CLAW = rgb('#fff2b0');
+const ORB_GLOW = rgb('#bfe9ff', 0.22);
+const ORB = rgb('#7fd0ff', 0.42);
+const ORB_RIM = rgb('#e2f6ff', 0.85);
+const ORB_SHINE = rgb('#ffffff', 0.85);
+const CLONE = rgb('#9fd8ff');
 
 /** Draws one picture of the game: stage, fighters, effects, HUD and the training overlays. */
 export class Renderer {
   private readonly stage = new Stage();
   private readonly hud = new Hud();
+  private readonly ghost = new Framebuffer(SCREEN_W, SCREEN_H);
 
   draw(fb: Framebuffer, game: Game): void {
     const w = game.world;
@@ -44,7 +50,11 @@ export class Renderer {
     }
     // The fighter who is attacking is drawn in front.
     const order = b.state === 'move' && a.state !== 'move' ? [a, b] : [b, a];
-    for (const f of order) this.fighter(fb, game, f, cameraX, ground);
+    for (const f of order) {
+      this.clones(fb, game, f, cameraX, ground);
+      this.fighter(fb, game, f, cameraX, ground);
+    }
+    this.projectiles(fb, game, cameraX, ground);
     this.effects(fb, game, cameraX, ground);
 
     if (game.showBoxes) drawBoxes(fb, game, cameraX, ground);
@@ -61,6 +71,53 @@ export class Renderer {
     const y = ground - f.y / SUB;
     const points = drawFigure(fb, pose, { x, y, facing: f.facing, palette: FIGHTER_PALETTES[f.index], rotate, pivot });
     this.moveEffects(fb, game, f, points, cameraX, ground);
+  }
+
+  /**
+   * Spiritual Tunneling: three clones do the same animation a little behind, then fuse with him. Each one is
+   * where he was, and in the pose he had, 2, 4 and 6 frames earlier (worked out from the move's movement).
+   */
+  private clones(fb: Framebuffer, game: Game, f: Fighter, cameraX: number, ground: number): void {
+    const m = f.move;
+    if (f.state !== 'move' || !m || m.kind !== 'chakra' || f.moveFrame > m.startup + m.active + 6) return;
+    const speedOn = (frame: number) => {
+      let speed = 0;
+      for (const s of m.motion) if (s.frame <= frame && s.forward !== undefined) speed = s.forward;
+      return speed;
+    };
+    for (let k = 3; k >= 1; k--) {
+      const delay = 2 * k;
+      if (f.moveFrame <= delay) continue;
+      let behind = 0;
+      for (let frame = f.moveFrame - delay + 1; frame <= f.moveFrame; frame++) behind += speedOn(frame);
+      const x = (f.x - f.facing * behind) / SUB - cameraX;
+      const { pose } = shotoPose({ ...f, moveFrame: f.moveFrame - delay }, game.world.frame);
+      this.ghost.clear(0);
+      drawFigure(this.ghost, pose, { x, y: ground - f.y / SUB, facing: f.facing, palette: FIGHTER_PALETTES[f.index] });
+      silhouette(fb, this.ghost, CLONE, 0.5 - k * 0.1);
+    }
+  }
+
+  /** Soul Flake: a light blue bubble, slightly see-through. */
+  private projectiles(fb: Framebuffer, game: Game, cameraX: number, ground: number): void {
+    for (const p of game.world.projectiles) {
+      const r = p.move.projectile!.radius;
+      const x = p.x / SUB - cameraX;
+      const y = ground - p.y / SUB;
+      fb.disc(x, y, r + 3, ORB_GLOW);
+      fb.disc(x, y, r, ORB);
+      const ring = Math.max(16, r * 4);
+      for (let i = 0; i < ring; i++) {
+        const angle = (i / ring) * Math.PI * 2;
+        fb.pixel(x + Math.cos(angle) * r, y + Math.sin(angle) * r, ORB_RIM);
+      }
+      // Slow swirl inside and a shine at the top left.
+      for (let i = 0; i < 3; i++) {
+        const angle = p.age * 0.15 + (i * Math.PI * 2) / 3;
+        fb.pixel(x + Math.cos(angle) * r * 0.55, y + Math.sin(angle) * r * 0.55, ORB_RIM);
+      }
+      fb.disc(x - r * 0.35, y - r * 0.4, Math.max(1, r * 0.18), ORB_SHINE);
+    }
   }
 
   /** Move-specific flourishes: the Leopard Strike charge and claws, the palm's air wave. */

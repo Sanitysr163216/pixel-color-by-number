@@ -36,6 +36,15 @@ export function drawBoxes(fb: Framebuffer, game: Game, cameraX: number, ground: 
     }
     const ox = Math.round(f.x / SUB - cameraX);
     const oy = Math.round(ground - f.y / SUB);
+    for (const p of w.projectiles) {
+      if (p.owner !== f.index) continue;
+      for (const r of w.projectileRects(p)) {
+        const x = r.l / SUB - cameraX;
+        const y = ground - r.t / SUB;
+        fb.rect(x, y, (r.r - r.l) / SUB, (r.t - r.b) / SUB, UI.hit);
+        fb.outline(x, y, (r.r - r.l) / SUB, (r.t - r.b) / SUB, UI.hitLine);
+      }
+    }
     fb.rect(ox - 2, oy, 5, 1, UI.white);
     fb.rect(ox, oy - 2, 1, 5, UI.white);
 

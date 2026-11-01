@@ -39,13 +39,15 @@ export interface SpecialMove {
   CE: MoveData | null;
 }
 
-/** A move that can only be used by spending 1–2 bars. */
+/** A move that can only be used by spending 1–2 bars (MoveData.barCost). */
 export interface ChakraSpecial {
   id: string;
   name: string;
   motion: number[];
   window: number;
   button: 'P' | 'K';
+  /** How many punches (or kicks) have to be pressed together. */
+  buttons: 1 | 2;
   move: MoveData;
 }
 

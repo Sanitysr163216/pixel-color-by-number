@@ -22,6 +22,7 @@ export interface CompiledChakraSpecial {
   motion: number[];
   window: number;
   button: 'P' | 'K';
+  buttons: 1 | 2;
   move: CompiledMove;
 }
 
@@ -89,6 +90,7 @@ export function compileCharacter(c: CharacterData): CompiledCharacter {
       motion: s.motion,
       window: s.window,
       button: s.button,
+      buttons: s.buttons,
       move: compileMove(s.id, s.move),
     })),
     data: c,

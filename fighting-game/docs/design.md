@@ -58,7 +58,10 @@ Every number here lives in code and can be changed there (see "Where to change t
 | Hitstop | Set per character, defaults: moves done from the ground 7 / 9 / 11 frames (light / medium / heavy); moves done in the air against a grounded opponent 7 for every move; air against air 3 on hit, 7 on block. A single move can set its own. |
 | Blocking | Hold back. Crouch (down-back) to block lows; overheads must be blocked standing. Forward + MK is an overhead, and every move done in the air is an overhead unless the move says otherwise. |
 | Proximity guard | While holding back, the fighter goes into the block stance from 2 frames before the opponent's first active frame, if the attack would reach them where they stand. They stop walking backward. |
-| Blockstrings | Once a fighter blocks, every hit that arrives while they are still in blockstun is blocked too, even if they let go of back, highs and lows alike. |
+| Blockstrings | Once a fighter blocks, every hit from the same side that arrives while they are still in blockstun is blocked too, even if they let go of back, highs and lows alike. |
+| One side at a time | Blocking covers the side the attack comes from. If hits come from both sides on the same frame (a projectile from behind and a punch from the front), only one can be blocked. A hit from the other side during blockstun is not blocked automatically. |
+| Chip damage | Specials, CE and Chakra specials do 10 damage per hit even when blocked. Normals do none. |
+| Projectiles | Fly at their own speed and disappear off the screen. Two players' projectiles that meet take one hit off each other (most have one hit, so both vanish). A projectile's hit freezes the opponent and the projectile, not the thrower, and its knockback is never pushed back onto the thrower. |
 | Air blocking | Normals done from the ground: light and medium can be blocked in the air, heavies can't. Specials done from the ground can't be blocked in the air, including ones that leave the ground themselves (Rising Push). Anything done after jumping (normals or specials) can be blocked by an airborne opponent. |
 | Hit in the air by a normal | A light or medium normal done from the ground, or any normal done in the air: the opponent flips backwards, invulnerable until landing, and can't act until landing. |
 | Hit in the air by a heavy or a special done from the ground | Knocked down like a sweep; the wakeup count starts when they hit the ground. Rising Push also knocks down an opponent on the ground. |
@@ -75,11 +78,23 @@ Every number here lives in code and can be changed there (see "Where to change t
 Blockstrings still follow the air-block rules: a grounded heavy can't be blocked in the air even in the middle of a
 blockstring.
 
+A blockstring can't reuse a chain either, the same as a combo. When a punch and a kick of the same strength are
+pressed together, the punch comes out. Landing during an air attack: 2 frames before the fighter can act.
+
 ## Assumptions to confirm
 
-1. **A blockstring can't reuse a chain either**, the same as a combo. Otherwise chains on block could loop forever.
-2. **Same-strength buttons together** (LP + LK): the punch comes out.
-3. **Landing during an air attack**: 2 frames before the fighter can act.
+1. **Crouching normals' heights**: crouching LK (stomp) and MK (knee-level kick) are lows; crouching LP, MP and HP
+   are mids. All their numbers are first guesses.
+2. **Soul Flake can be blocked in the air** (every version), with double chip. The spec's "double chip against air
+   block" means it can be, unlike other specials done from the ground.
+3. **Soul Flake numbers**: light flies at 3 px per frame and does 70 damage; the CE has 45 frames of recovery (only its
+   startup was given). Its 5 hits come 8 frames apart.
+4. **Projectiles meeting**: each takes one hit off the other, so the 5-hit CE beats a normal Soul Flake and keeps going.
+5. **Spiritual Tunneling**: costs 1 bar, 220 damage, 8 frames of dash (72 px) before the punch. The punch is at head
+   level, so crouching opponents duck under it. It pushes the opponent like any move instead of passing through.
+6. **Input overlap**: a rolled 4-2-1-6 passes through a half circle forward, so Leopard Strike's motion with two
+   punches and a bar comes out as Spiritual Tunneling. Once Leopard Strike has a CE, which should win?
+7. **Chip can KO** in versus.
 
 ## Character 1: Shoto / "zoner"
 
@@ -99,12 +114,23 @@ Current numbers (all first guesses, to tune by playing). S / A / R = startup / a
 | 6 2 3 + LK | Rising Push L | 1 | 6 | 0 | 80 | knockdown | 14 | 24 px at 4 | Hitbox from frame 2, forward and up; low jump; 10 frames landing recovery |
 | 6 2 3 + MK | Rising Push M | 2 | 8 | 0 | 100 | knockdown | 16 | 26 px at 4.5 | Higher and further; hits directly above the head; 14 landing |
 | 6 2 3 + HK | Rising Push H | 5 | 20 | 0 | 120 | knockdown | 18 | 30 px at 5 | Goes much further; near the top the hitbox reaches behind; 18 landing |
+| 2LP | Double Jab | 4 | 7 | 7 | 15 + 15 | 10 | 7 | 6 px at 2 | Two punches, hitting on active frames 1–2 and 6–7. Close range |
+| 2MP | Low Chop | 10 | 3 | 14 | 55 | 16 | 12 | 22 px at 4.5 | Horizontal hand chop; slow, reaches 60 px |
+| 2HP | Spinning Backhand | 9 | 4 | 18 | 85 | 20 | 15 | 32 px at 5.5 | Spins on his heel |
+| 2LK | Stomp | 5 | 2 | 9 | 25 | 11 | 8 | 10 px at 3 | Low. Reaches 30 px. Half stands up (hurtbox 74 px tall) |
+| 2MK | Low Donkey Kick | 7 | 3 | 15 | 50 | 15 | 11 | 22 px at 4.5 | Low, knee level. Moves 1.2 px per frame forward during recovery |
+| j.MK | Jumping Side Kick | 5 | 10 | 4 | 60 | 16 | 12 | 22 px at 4.5 | Like Ryu's in SF2: forward and down, with a box at the hip that crosses up. Overhead |
+| 2 3 6 + LP | Soul Flake L | 12 | 1 | 43 | 70 | 20 | 16 | 16 px at 4 | Projectile, 3 px per frame. Black rod. Chip 10, ×2 in the air |
+| 2 3 6 + MP | Soul Flake M | 12 | 1 | 44 | 70 | 20 | 16 | 16 px at 4 | 25% faster (3.75 px per frame) |
+| 2 3 6 + HP | Soul Flake H | 12 | 1 | 45 | 70 | 20 | 16 | 16 px at 4 | 75% faster (5.25 px per frame) |
+| 2 3 6 + PP | Soul Flake CE | 20 | 1 | 45 | 35 × 5 | 14 | 14 | 4 px at 2 per hit | 1 bar. Big orb at half the light speed, too tall to jump over; 5 hits = 2.5× damage. Blocking it on the ground locks the stance. Airborne during startup |
+| 4 1 2 3 6 + PP | Spiritual Tunneling | 8 | 4 | 20 | 220 | knockdown | 18 | 30 px at 5 | Chakra special, 1 bar. Dashes 72 px, punches at head level; clones fuse with him. Invincible frames 1–12 |
 
 Rising Push leaves the ground after its startup; its feet (the hitbox) have no hurtbox. The move ends when the
 fighter lands, then the landing recovery applies.
 
-Not made yet (the input is read, nothing happens): standing HP, LK, MK; crouching LP, MP, HP, LK, MK; every
-jumping attack; both CE versions; the Chakra specials.
+Not made yet (the input is read, nothing happens): standing HP, LK, MK; jumping LP, MP, HP, LK, HK; Leopard Strike CE
+and Rising Push CE.
 
 Other numbers: 1000 health; walk 2.5 px per frame forward, 2 back; jumps have 4 frames on the ground first, last
 about 41 frames and go about 105 px high; wakeup 40 frames (80 after heavy Leopard Strike). Dash and back hop are
@@ -113,8 +139,6 @@ about 19 frames in the air and about 66 px back, no invulnerability.
 
 ## Planned
 
-- **Projectiles.** The engine needs a projectile object (own hitbox, speed, lifetime, clash rules); it will be added
-  with the first projectile move.
 - **Mechanics from Darkstalkers, SSF2T and Third Strike.** The move data has room for per-frame properties; systems
   like parries or guard cancels become new fields and states.
 
@@ -127,5 +151,5 @@ about 19 frames in the air and about 66 px back, no invulnerability.
 | Rules for the whole game (meter, buffers, CE window, double-tap window, proximity guard, wakeup, gravity) | `src/config.ts` |
 | What every move field means | `src/moves/types.ts` |
 | Air block and air hit defaults | `canAirBlock` and `airHitResult` in `src/moves/compile.ts` |
-| Chains, cancels, blocking, dash | `src/sim/world.ts` |
+| Chains, cancels, blocking, dash, projectiles | `src/sim/world.ts` |
 | Placeholder animation | `src/characters/shoto/poses.ts` |

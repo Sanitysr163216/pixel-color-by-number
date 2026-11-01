@@ -11,6 +11,17 @@ export interface UBox {
   h: number;
 }
 
+/** Projectile data in simulation units. */
+export interface CompiledProjectile {
+  speed: number;
+  boxes: UBox[];
+  hits: number;
+  hitInterval: number;
+  spawn: { x: number; y: number };
+  radius: number;
+  lockGuard: boolean;
+}
+
 /** A move with every default filled in, frames turned into move-frame ranges and pixels into units. */
 export interface CompiledMove {
   id: string;
@@ -34,6 +45,9 @@ export interface CompiledMove {
   knockback: { distance: number; speed: number };
   /** Move frames (1 = first startup frame) where each hitbox phase exists. */
   hitPhases: { from: number; to: number; boxes: UBox[]; hit: number }[];
+  projectile: CompiledProjectile | null;
+  chip: number;
+  airBlockChip: number;
   hurtPhases: { from: number; to: number; boxes: UBox[]; replace: boolean }[];
   motion: { frame: number; forward?: number; up?: number }[];
   landingRecovery: number;
@@ -77,7 +91,14 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
   if (m.landingRecovery !== undefined) whole(m.landingRecovery, 'landingRecovery');
   if (m.knockback && !(m.knockback.distance >= 0 && m.knockback.speed > 0))
     fail('knockback needs a distance of 0 or more and a speed above 0');
-  if (!m.hitboxes.length) fail('needs at least one hitbox phase');
+  if (!m.hitboxes.length && !m.projectile) fail('needs at least one hitbox phase or a projectile');
+  const pr = m.projectile;
+  if (pr) {
+    whole(pr.hits, 'projectile.hits', 1);
+    whole(pr.hitInterval, 'projectile.hitInterval');
+    if (!(pr.speed > 0)) fail('projectile.speed must be above 0');
+    if (!pr.boxes.length) fail('projectile has no boxes');
+  }
 
   const defaults = STRENGTH_DEFAULTS[m.strength];
   const knockback = m.knockback ?? defaults.knockback;
@@ -126,6 +147,19 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
     hitstop: m.hitstop ?? null,
     knockback: { distance: px(knockback.distance), speed: px(knockback.speed) },
     hitPhases,
+    projectile: pr
+      ? {
+          speed: px(pr.speed),
+          boxes: pr.boxes.map(ubox),
+          hits: pr.hits,
+          hitInterval: pr.hitInterval,
+          spawn: { x: px(pr.spawn.x), y: px(pr.spawn.y) },
+          radius: pr.radius,
+          lockGuard: pr.lockGuard ?? false,
+        }
+      : null,
+    chip: m.chip ?? (m.kind === 'normal' || m.kind === 'command' ? 0 : RULES.specialChip),
+    airBlockChip: m.airBlockChip ?? 1,
     hurtPhases,
     motion: (m.motion ?? []).map((s) => ({
       frame: s.frame,

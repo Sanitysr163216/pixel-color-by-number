@@ -16,7 +16,7 @@ Needs [Node.js](https://nodejs.org) 20 or newer.
 cd fighting-game
 npm install
 npm run dev        # opens a local address to play at, reloads when files change
-npm test           # 101 frame-exact tests of the rules
+npm test           # 131 frame-exact tests of the rules
 npm run build      # a finished copy in dist/, for any web host
 ```
 

@@ -107,7 +107,7 @@ describe('special moves in the game', () => {
 
 describe('empty moves and Chakra Enhance', () => {
   it('buttons with no move do nothing, and the fighter keeps walking or crouching', () => {
-    for (const [dir, button, slot] of [[5, 'LK', '5LK'], [6, 'HP', '5HP'], [2, 'LP', '2LP'], [3, 'MK', '2MK']] as const) {
+    for (const [dir, button, slot] of [[5, 'LK', '5LK'], [6, 'HP', '5HP'], [4, 'MK', '5MK']] as const) {
       const w = newWorld(250);
       const p1 = w.fighters[0];
       play(w, [inp(dir, [button])]);

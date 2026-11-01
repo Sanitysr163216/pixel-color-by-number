@@ -1,4 +1,4 @@
-import { MAX_SEPARATION, RULES, STAGE_W, WALL_MARGIN } from '../config';
+import { MAX_SEPARATION, RULES, SCREEN_W, STAGE_W, WALL_MARGIN } from '../config';
 import { px } from '../core/units';
 import type { CompiledCharacter, CompiledSpecial } from '../characters/compile';
 import type { NormalSlot } from '../characters/types';
@@ -44,11 +44,33 @@ export interface Advantage {
   value: number;
 }
 
+/** A projectile flying across the screen. Positions in simulation units; x, y is its centre. */
+export interface Projectile {
+  owner: 0 | 1;
+  move: CompiledMove;
+  /** Thrown from the air (after a jump), for the air rules. */
+  fromAir: boolean;
+  x: number;
+  y: number;
+  vx: number;
+  facing: 1 | -1;
+  hitsLeft: number;
+  /** Frames until it can hit again (multi-hit projectiles). */
+  cooldown: number;
+  /** Frames it stays frozen after connecting. */
+  hitstop: number;
+  age: number;
+}
+
 interface Contact {
+  attacker: Fighter;
   move: CompiledMove;
   fromAir: boolean;
   hit: number;
   where: Rect;
+  /** The side the hit comes from, as seen by the defender: -1 left, 1 right. */
+  side: number;
+  projectile: Projectile | null;
 }
 
 /** Which kinds of move a press may start. */
@@ -68,6 +90,7 @@ export class World {
   readonly fighters: [Fighter, Fighter];
   /** What happened during the last step (for sparks and sounds). */
   readonly events: WorldEvent[] = [];
+  projectiles: Projectile[] = [];
   advantage: Advantage | null = null;
   /** false in training: health stops at 1. */
   koEnabled = true;
@@ -94,6 +117,7 @@ export class World {
       f.input.clear(); // motions from before the reset don't count
       this.toGround(f);
     }
+    this.projectiles = [];
     this.advantage = null;
     this.measuring = null;
   }
@@ -118,10 +142,17 @@ export class World {
     for (const f of fs) if (!frozen[f.index]) this.slide(f);
     this.separate();
     for (const f of fs) this.face(f);
+    this.moveProjectiles();
 
-    // Both hits are found before either is applied, so two moves that connect on the same frame trade.
-    const contacts = fs.map((f) => (frozen[f.index] ? null : this.findContact(f)));
-    contacts.forEach((c, i) => c && this.applyContact(fs[i], c));
+    // Every hit is found before any is applied, so moves that connect on the same frame trade.
+    const contacts: Contact[] = [];
+    for (const f of fs) {
+      const c = frozen[f.index] ? null : this.findContact(f);
+      if (c) contacts.push(c);
+    }
+    contacts.push(...this.projectileContacts());
+    for (const c of contacts) this.applyContact(c);
+    this.projectiles = this.projectiles.filter((p) => p.hitsLeft > 0);
 
     for (const f of fs) {
       // A combo (or blockstring) lasts until the defender leaves hit stun or blockstun; then its chains can be used again.
@@ -163,8 +194,8 @@ export class World {
         if (!this.tryCancel(f)) this.tryUpgradeToCE(f);
         break;
       case 'blockstun':
-        // Switch between standing and crouching block while blocking.
-        if (!f.airBlock) f.crouching = f.input.get(0)!.y < 0;
+        // Switch between standing and crouching block while blocking (unless the stance is locked).
+        if (!f.airBlock && !f.guardLock) f.crouching = f.input.get(0)!.y < 0;
         break;
     }
   }
@@ -261,9 +292,26 @@ export class World {
   private updateGuard(f: Fighter): void {
     const a = this.other(f);
     const input = f.input.get(0)!;
-    const away = a.x > f.x ? -1 : a.x < f.x ? 1 : -f.facing;
-    const holdingBack = f.autoBlock || input.x === away; // the training dummy blocks without pressing back
-    f.guarding = holdingBack && input.y <= 0 && this.threatened(f, a, input.y < 0);
+    const crouching = input.y < 0;
+    // Holding back away from where the attack comes from (the training dummy blocks without pressing back).
+    const holdingBack = (side: number) => f.autoBlock || input.x === -side;
+    const meleeSide = a.x > f.x ? 1 : a.x < f.x ? -1 : -a.facing;
+    f.guarding =
+      input.y <= 0 &&
+      ((holdingBack(meleeSide) && this.threatened(f, a, crouching)) ||
+        this.projectiles.some(
+          (p) => p.owner === a.index && holdingBack(p.vx > 0 ? -1 : 1) && this.projectileThreat(p, f, crouching),
+        ));
+  }
+
+  /** A projectile that will touch the fighter within the next RULES.proximityGuard frames. */
+  private projectileThreat(p: Projectile, d: Fighter, crouching: boolean): boolean {
+    const hurt = (crouching ? d.char.hurt.crouch : d.char.hurt.stand).map((b) => place(d.x, d.y, d.facing, b));
+    for (let k = 0; k <= RULES.proximityGuard; k++) {
+      const boxes = this.projectileRects(p, p.x + p.vx * k);
+      if (boxes.some((r) => hurt.some((h) => overlap(r, h)))) return true;
+    }
+    return false;
   }
 
   private threatened(d: Fighter, a: Fighter, crouching: boolean): boolean {
@@ -342,8 +390,9 @@ export class World {
       for (const cs of c.chakraSpecials) {
         const type = cs.button === 'P' ? PUNCHES : KICKS;
         if (!(fresh & type) || !motionDone(f.input, cs.motion, cs.window, f.facing, age)) continue;
+        if (countButtons(this.pressedTogether(f, age, type)) < cs.buttons) continue;
         if (f.meter < cs.move.barCost * PER_BAR) continue;
-        this.use(f, age, fresh & type);
+        for (let a = age; a <= age + RULES.ceWindow; a++) this.use(f, a, type);
         f.meter -= cs.move.barCost * PER_BAR;
         this.startMove(f, cs.move, null);
         return true;
@@ -543,6 +592,7 @@ export class World {
   private advanceMove(f: Fighter): void {
     const m = f.move!;
     f.moveFrame++;
+    if (m.projectile && f.moveFrame === m.startup + 1) this.spawnProjectile(f, m);
     for (const s of m.motion) {
       if (s.frame !== f.moveFrame) continue;
       if (s.forward !== undefined) f.vx = f.facing * s.forward;
@@ -645,6 +695,7 @@ export class World {
     f.airActionUsed = false;
     f.guarding = false;
     f.hop = false;
+    f.guardLock = false;
     const input = f.input.get(0);
     f.crouching = !!input && input.y < 0;
   }
@@ -655,7 +706,89 @@ export class World {
     f.move = null;
     f.special = null;
     f.airBlock = false;
+    f.guardLock = false;
     f.airActionUsed = airActionUsed;
+  }
+
+  // ---------------------------------------------------------------- projectiles
+
+  /** Throws the move's projectile from the fighter (called on the move's first active frame). */
+  spawnProjectile(f: Fighter, m: CompiledMove): Projectile {
+    const pr = m.projectile!;
+    const p: Projectile = {
+      owner: f.index,
+      move: m,
+      fromAir: f.moveFromAir,
+      x: f.x + f.facing * pr.spawn.x,
+      y: f.y + pr.spawn.y,
+      vx: f.facing * pr.speed,
+      facing: f.facing,
+      hitsLeft: pr.hits,
+      cooldown: 0,
+      hitstop: 0,
+      age: 0,
+    };
+    this.projectiles.push(p);
+    return p;
+  }
+
+  /** The projectile's hitboxes in the world (at `x`, by default where it is now). */
+  projectileRects(p: Projectile, x = p.x): Rect[] {
+    return p.move.projectile!.boxes.map((b) => place(x, p.y, p.facing, b));
+  }
+
+  private moveProjectiles(): void {
+    for (const p of this.projectiles) {
+      if (p.hitstop > 0) {
+        p.hitstop--;
+        continue;
+      }
+      p.x += p.vx;
+      p.age++;
+      if (p.cooldown > 0) p.cooldown--;
+    }
+    // The two players' projectiles cancel each other out when they meet, one hit at a time.
+    for (const a of this.projectiles) {
+      for (const b of this.projectiles) {
+        if (a.owner !== 0 || b.owner !== 1 || a.hitsLeft <= 0 || b.hitsLeft <= 0) continue;
+        const rb = this.projectileRects(b);
+        if (this.projectileRects(a).some((r) => rb.some((q) => overlap(r, q)))) {
+          a.hitsLeft--;
+          b.hitsLeft--;
+        }
+      }
+    }
+    // They disappear once off the screen.
+    const mid = (this.fighters[0].x + this.fighters[1].x) / 2;
+    const left = Math.min(px(STAGE_W - SCREEN_W), Math.max(0, mid - px(SCREEN_W / 2)));
+    const right = left + px(SCREEN_W);
+    this.projectiles = this.projectiles.filter(
+      (p) => p.hitsLeft > 0 && p.age < 600 && p.x > left - px(40) && p.x < right + px(40),
+    );
+  }
+
+  private projectileContacts(): Contact[] {
+    const contacts: Contact[] = [];
+    for (const p of this.projectiles) {
+      if (p.hitstop > 0 || p.cooldown > 0 || p.hitsLeft <= 0) continue;
+      const def = this.fighters[p.owner === 0 ? 1 : 0];
+      const hurt = this.hurtboxes(def).map((b) => place(def.x, def.y, def.facing, b));
+      for (const r of this.projectileRects(p)) {
+        const h = hurt.find((q) => overlap(r, q));
+        if (!h) continue;
+        contacts.push({
+          attacker: this.fighters[p.owner],
+          move: p.move,
+          fromAir: p.fromAir,
+          hit: 0,
+          where: intersection(r, h),
+          side: p.vx > 0 ? -1 : 1,
+          projectile: p,
+        });
+        break;
+      }
+    }
+    return contacts;
   }
 
   // ---------------------------------------------------------------- hitting
@@ -672,26 +805,40 @@ export class World {
       for (const box of phase.boxes) {
         const hb = place(att.x, att.y, att.facing, box);
         for (const h of hurt) {
-          if (overlap(hb, h)) return { move: m, fromAir: att.moveFromAir, hit: phase.hit, where: intersection(hb, h) };
+          if (!overlap(hb, h)) continue;
+          const side = att.x > def.x ? 1 : att.x < def.x ? -1 : -att.facing;
+          return { attacker: att, move: m, fromAir: att.moveFromAir, hit: phase.hit, where: intersection(hb, h), side, projectile: null };
         }
       }
     }
     return null;
   }
 
-  private applyContact(att: Fighter, c: Contact): void {
+  private applyContact(c: Contact): void {
+    const att = c.attacker;
     const def = this.other(att);
     const m = c.move;
-    att.hitsDone |= 1 << c.hit;
+    const p = c.projectile;
+    if (p) {
+      p.hitsLeft--;
+      p.cooldown = m.projectile!.hitInterval;
+    } else {
+      att.hitsDone |= 1 << c.hit;
+    }
     const air = this.isAirborne(def);
-    const blocked = this.blocks(def, att, m, c.fromAir, air);
+    const blocked = this.blocks(def, c, air);
     const stop = this.hitstop(att, m, c.fromAir, air, blocked);
-    att.hitstop = Math.max(att.hitstop, stop);
     def.hitstop = Math.max(def.hitstop, stop);
-    if (!att.cancel) att.cancel = { from: this.frame, chainUntil: this.frame + stop, activeUntil: this.frame };
-    else att.cancel.chainUntil = Math.max(att.cancel.chainUntil, this.frame + stop);
-    const away = def.x > att.x ? 1 : def.x < att.x ? -1 : att.facing;
-    const knockback = { left: m.knockback.distance, speed: m.knockback.speed, dir: away, from: att.index };
+    if (p) {
+      p.hitstop = stop; // the projectile freezes with the defender; its thrower doesn't
+    } else {
+      att.hitstop = Math.max(att.hitstop, stop);
+      if (!att.cancel) att.cancel = { from: this.frame, chainUntil: this.frame + stop, activeUntil: this.frame };
+      else att.cancel.chainUntil = Math.max(att.cancel.chainUntil, this.frame + stop);
+    }
+    const away = -c.side;
+    // A projectile's knockback is never pushed back onto its thrower in the corner.
+    const knockback = { left: m.knockback.distance, speed: m.knockback.speed, dir: away, from: p ? null : att.index };
     def.guarding = false;
 
     if (blocked) {
@@ -706,6 +853,14 @@ export class World {
       def.slide = knockback;
       def.meter = Math.min(METER_MAX, def.meter + RULES.meter.onBlock);
       def.combo = { hits: 0, damage: 0 };
+      def.blockSide = c.side;
+      def.blockFrame = this.frame;
+      if (p && m.projectile!.lockGuard && !air) def.guardLock = true;
+      const chip = Math.round(m.chip * (air ? m.airBlockChip : 1));
+      if (chip) {
+        def.health = Math.max(this.koEnabled ? 0 : 1, def.health - chip);
+        if (def.health <= 0) this.knockDown(def, away, 1, 'ko');
+      }
     } else {
       let damage = m.damage;
       const vulnerable = def.state === 'move' ? def.move!.vulnerable : null;
@@ -722,6 +877,7 @@ export class World {
       def.special = null;
       def.slide = null;
       def.airBlock = false;
+      def.guardLock = false;
       def.walk = 0;
       if (def.health <= 0) {
         this.knockDown(def, away, 1, 'ko');
@@ -759,23 +915,29 @@ export class World {
   }
 
   /**
-   * Hold back to block. Crouch to block lows, stand to block overheads. In the air, see canAirBlock.
-   * Once blocking, every hit of the blockstring is blocked, even if back is released.
+   * Hold back (away from where the hit comes from) to block. Crouch to block lows, stand to block overheads.
+   * In the air, see canAirBlock. Once blocking, every hit from the same side is blocked while in blockstun, even
+   * if back is released. Blocking covers one side only: a hit from the other side on the same frame gets through.
    */
-  private blocks(def: Fighter, att: Fighter, m: CompiledMove, fromAir: boolean, air: boolean): boolean {
+  private blocks(def: Fighter, c: Contact, air: boolean): boolean {
     if (def.state !== 'ground' && def.state !== 'blockstun' && def.state !== 'jump') return false;
-    if (air && !canAirBlock(m, fromAir)) return false;
-    const guard = fromAir ? m.airGuard : m.guard;
-    if (def.state === 'blockstun' || def.autoBlock) {
-      if (!air && guard !== 'mid') def.crouching = guard === 'low';
+    const m = c.move;
+    if (air && !canAirBlock(m, c.fromAir)) return false;
+    if (def.blockFrame === this.frame && def.blockSide !== c.side) return false;
+    const guard = c.fromAir ? m.airGuard : m.guard;
+    const stanceBlocks = (crouch: boolean) => !(guard === 'low' && !crouch) && !(guard === 'overhead' && crouch);
+    if ((def.state === 'blockstun' && def.blockSide === c.side) || def.autoBlock) {
+      if (air) return true;
+      // Stance locked (blocking the CE Soul Flake): only what that stance blocks.
+      if (def.guardLock) return stanceBlocks(def.crouching);
+      if (guard !== 'mid') def.crouching = guard === 'low';
       return true;
     }
     const input = def.input.get(0)!;
-    const away = att.x > def.x ? -1 : att.x < def.x ? 1 : -def.facing;
-    if (input.x !== away) return false;
+    if (input.x !== -c.side) return false;
     if (air) return true;
-    const crouch = input.y < 0;
-    if ((guard === 'low' && !crouch) || (guard === 'overhead' && crouch)) return false;
+    const crouch = def.guardLock ? def.crouching : input.y < 0;
+    if (!stanceBlocks(crouch)) return false;
     def.crouching = crouch;
     return true;
   }

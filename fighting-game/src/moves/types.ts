@@ -55,6 +55,27 @@ export interface MotionStep {
   up?: number;
 }
 
+/**
+ * A projectile the move throws on its first active frame (the fighter's own hitboxes may then be empty).
+ * Damage, hitstun, blockstun, knockback and chip come from the move, per hit.
+ */
+export interface ProjectileData {
+  /** Forward speed, px per frame. */
+  speed: number;
+  /** Hitbox around the projectile's centre: x forward, y up (negative = below the centre). */
+  boxes: Box[];
+  /** How many hits it deals before it disappears. Also its strength when two projectiles meet. */
+  hits: number;
+  /** Frames between two hits while it keeps touching the opponent (multi-hit projectiles). */
+  hitInterval: number;
+  /** Where its centre appears, relative to the fighter (px, x forward, y up from the feet). */
+  spawn: { x: number; y: number };
+  /** Drawing: radius of the orb in px. */
+  radius: number;
+  /** Blocking it on the ground locks the blocker's stance (standing or crouching) until their blockstun ends. */
+  lockGuard?: boolean;
+}
+
 export interface MoveData {
   name: string;
   kind: MoveKind;
@@ -87,8 +108,10 @@ export interface MoveData {
    */
   knockback?: { distance: number; speed: number };
 
+  /** Can be empty for a move whose only hitbox is its projectile. */
   hitboxes: HitboxPhase[];
   hurtboxes?: HurtboxPhase[];
+  projectile?: ProjectileData;
   /** Movement during the move. */
   motion?: MotionStep[];
   /**
@@ -118,6 +141,11 @@ export interface MoveData {
   airborne?: Array<[number, number]>;
   /** The fighter takes more damage if they are hit during these frames ('startup' = all startup frames). */
   vulnerable?: { frames: 'startup' | [number, number]; damageMultiplier: number };
+
+  /** Damage a blocked hit still does. Default: 10 for specials, CE and Chakra specials, 0 for normals. */
+  chip?: number;
+  /** Chip is multiplied by this when the move is blocked in the air. Default 1. */
+  airBlockChip?: number;
 
   /** Meter the attacker gets when the move hits (not blocked). Default 3 × 1 / 2 / 3 for L / M / H. */
   meterOnHit?: number;

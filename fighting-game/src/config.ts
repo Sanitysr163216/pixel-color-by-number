@@ -86,6 +86,9 @@ export const RULES = {
 
   /** Frames a fighter can't act after landing during an air attack. */
   airAttackLanding: 2,
+
+  /** Damage a blocked hit of a special, CE or Chakra special still does (chip damage). */
+  specialChip: 10,
 };
 
 /**

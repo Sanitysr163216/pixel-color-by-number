@@ -132,6 +132,13 @@ export class Framebuffer {
   }
 }
 
+/** Draws every non-transparent pixel of `src` (same size as `dst`) as `color`, at `alpha` (0–1). */
+export function silhouette(dst: Framebuffer, src: Framebuffer, color: Color, alpha: number): void {
+  const a = Math.round(alpha * 255);
+  const n = Math.min(dst.data.length, src.data.length);
+  for (let i = 0; i < n; i++) if (src.data[i] >>> 24) dst.data[i] = blend(dst.data[i], color, a);
+}
+
 function blend(dst: number, src: number, a: number): number {
   const ia = 255 - a;
   const r = ((src & 255) * a + (dst & 255) * ia) / 255;

@@ -5,14 +5,23 @@ import { NEUTRAL } from '../src/input/buttons';
 import { hold, inp, inputsFor, newWorld, play } from './helpers';
 
 const shoto = CHARACTERS.shoto;
-const moves: CompiledMove[] = [
-  ...Object.values(shoto.normals).filter((m): m is CompiledMove => m !== null),
+const groundMoves: CompiledMove[] = [
+  ...Object.entries(shoto.normals)
+    .filter(([slot, m]) => m !== null && !slot.startsWith('j.'))
+    .map(([, m]) => m!),
   ...shoto.commandNormals.map((c) => c.move),
   ...shoto.specials.flatMap((s) => [s.L, s.M, s.H].filter((m): m is CompiledMove => m !== null)),
 ];
 
+/** Frames of the move that have a hitbox (only ever inside the active frames, gaps allowed). */
+function expectedHitboxFrames(m: CompiledMove): Set<number> {
+  const frames = new Set<number>();
+  for (const p of m.hitPhases) for (let f = p.from; f <= p.to; f++) frames.add(f);
+  return frames;
+}
+
 describe('startup / active / recovery', () => {
-  it.each(moves.map((m) => [m.id, m] as const))('%s: hitbox only on the active frames', (id, m) => {
+  it.each(groundMoves.map((m) => [m.id, m] as const))('%s: hitbox only on the active frames', (id, m) => {
     const w = newWorld(250); // too far apart to hit anything
     const p1 = w.fighters[0];
     play(w, inputsFor(id));
@@ -20,15 +29,29 @@ describe('startup / active / recovery', () => {
     expect(p1.move!.id).toBe(id);
     expect(p1.moveFrame).toBe(1); // the frame the button is pressed is frame 1
 
-    const seen: boolean[] = [];
+    const expected = expectedHitboxFrames(m);
+    for (const f of expected) expect(f > m.startup && f <= m.startup + m.active, `frame ${f} is active`).toBe(true);
     for (let frame = 1; frame <= m.startup + m.active + 2 && p1.state === 'move'; frame++) {
       expect(p1.moveFrame).toBe(frame);
-      seen.push(w.hitboxes(p1).length > 0);
+      expect(w.hitboxes(p1).length > 0, `frame ${frame}`).toBe(expected.has(frame));
+      // A projectile appears on the first active frame.
+      if (m.projectile) expect(w.projectiles.length, `frame ${frame}`).toBe(frame > m.startup ? 1 : 0);
       w.step([NEUTRAL, NEUTRAL]);
     }
-    for (let frame = 1; frame <= seen.length; frame++) {
-      const active = frame > m.startup && frame <= m.startup + m.active;
-      expect(seen[frame - 1], `frame ${frame}`).toBe(active);
+  });
+
+  it('jumping MK: hitbox only on its active frames', () => {
+    const w = newWorld(250);
+    const p1 = w.fighters[0];
+    const m = shoto.normals['j.MK']!;
+    play(w, [inp(8)]);
+    hold(w, 6);
+    play(w, [inp(5, ['MK'])]);
+    expect(p1.move?.id).toBe('j.MK');
+    for (let frame = 1; frame <= m.startup + m.active + 2 && p1.state === 'move'; frame++) {
+      expect(p1.moveFrame).toBe(frame);
+      expect(w.hitboxes(p1).length > 0, `frame ${frame}`).toBe(frame > m.startup && frame <= m.startup + m.active);
+      w.step([NEUTRAL, NEUTRAL]);
     }
   });
 

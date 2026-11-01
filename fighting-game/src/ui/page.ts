@@ -67,6 +67,13 @@ function notes(m: CompiledMove): string {
   if (m.vulnerable) out.push(`Takes ×${m.vulnerable.damageMultiplier} damage if hit during startup`);
   if (m.landingRecovery) out.push(`Airborne; +${m.landingRecovery} frames after landing`);
   if (m.hitPhases.some((p) => p.boxes.some((b) => b.x + b.w / 2 < 0))) out.push('Hits behind too');
+  if (m.hitPhases.length > 1 && new Set(m.hitPhases.map((p) => p.hit)).size > 1) out.push(`${new Set(m.hitPhases.map((p) => p.hit)).size} hits`);
+  const pr = m.projectile;
+  if (pr) out.push(`Projectile, ${pr.speed / SUB} px per frame${pr.hits > 1 ? `, ${pr.hits} hits` : ''}${pr.lockGuard ? ', locks the blocker\'s stance' : ''}`);
+  if (m.invincible.length) out.push(`Invincible frames ${m.invincible.map(([a, b]) => `${a}–${b}`).join(', ')}`);
+  if (m.airborne.length) out.push(`Airborne frames ${m.airborne.map(([a, b]) => `${a}–${b}`).join(', ')}`);
+  if (m.barCost) out.push(`${m.barCost} bar${m.barCost > 1 ? 's' : ''}`);
+  if (m.chip) out.push(`Chip ${m.chip}${m.airBlockChip > 1 ? ` (×${m.airBlockChip} in the air)` : ''}`);
   out.push(`Knockback ${m.knockback.distance / SUB} px`);
   return out.join('. ');
 }
@@ -95,6 +102,14 @@ export function renderMoveList(c: CompiledCharacter): void {
     for (const v of ['L', 'M', 'H'] as const) {
       const m = sp[v];
       if (m) row(`${sp.motion.join(' ')} + ${v}${PUNCH_OR_KICK[sp.button]}`, m);
+    }
+    if (sp.CE) row(`${sp.motion.join(' ')} + ${PUNCH_OR_KICK[sp.button]}${PUNCH_OR_KICK[sp.button]}`, sp.CE);
+  }
+  if (c.chakraSpecials.length) {
+    group('Chakra specials');
+    for (const cs of c.chakraSpecials) {
+      const button = PUNCH_OR_KICK[cs.button];
+      row(`${cs.motion.join(' ')} + ${cs.buttons === 2 ? button + button : button}`, cs.move);
     }
   }
   body.innerHTML = rows.join('');

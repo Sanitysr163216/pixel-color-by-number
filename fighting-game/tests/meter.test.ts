@@ -5,10 +5,13 @@ import { hold, inp2, inputsFor, newWorld, play } from './helpers';
 
 function meterAfter(id: string, gap: number, p2Block = false) {
   const w = newWorld(gap);
-  const moveInputs = inputsFor(id);
-  play(w, moveInputs, p2Block ? moveInputs.map(() => inp2(4)) : []);
-  hold(w, 40, NEUTRAL, p2Block ? inp2(4) : NEUTRAL);
-  return { attacker: w.fighters[0].meter, defender: w.fighters[1].meter, hit: w.fighters[1].health < 1000 };
+  const p2 = p2Block ? inp2(4) : NEUTRAL;
+  let hit = false;
+  for (const p1 of [...inputsFor(id), ...Array(40).fill(NEUTRAL)]) {
+    w.step([p1, p2]);
+    hit ||= w.events.some((e) => e.type === 'hit');
+  }
+  return { attacker: w.fighters[0].meter, defender: w.fighters[1].meter, hit };
 }
 
 describe('meter', () => {

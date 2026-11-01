@@ -1,5 +1,8 @@
-import type { Color, Framebuffer } from './framebuffer';
+import { rgb, type Color, type Framebuffer } from './framebuffer';
 import type { FighterPalette } from './palette';
+
+const ROD = rgb('#141418');
+const ROD_SHINE = rgb('#5a5a6e');
 
 /** A point relative to the fighter: x forward from the centre, y up from the feet, in pixels. */
 export type P = readonly [number, number];
@@ -23,6 +26,8 @@ export interface Pose {
   bf: P;
   /** A staff held in the hands, from one end to the other. */
   staff?: readonly [P, P];
+  /** A black rod held in the hands (Soul Flake). */
+  rod?: readonly [P, P];
   /** Front hand drawn bigger: an open palm or a clenched fist. */
   bigHand?: boolean;
 }
@@ -102,6 +107,12 @@ export function drawFigure(fb: Framebuffer, pose: Pose, o: FigureOptions): Scree
   fb.pixel(ex, ey - 1, pal.outline);
 
   if (pose.staff) limb([pose.staff[0], pose.staff[1]], 1.5, pal.staff);
+  if (pose.rod) {
+    limb([pose.rod[0], pose.rod[1]], 1.5, ROD);
+    const [ax, ay] = T(pose.rod[0]);
+    const [bx, by] = T(pose.rod[1]);
+    fb.line(ax, ay - 1, bx, by - 1, ROD_SHINE);
+  }
 
   // Near leg and arm.
   limb([hip, pose.fk, pose.ff], 4, pal.pants);

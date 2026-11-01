@@ -15,7 +15,7 @@
 cd fighting-game
 npm install
 npm run dev        # 给出一个本地网址，打开就能玩；改了文件会自动刷新
-npm test           # 101 个逐帧测试，检查所有规则
+npm test           # 131 个逐帧测试，检查所有规则
 npm run build      # 在 dist/ 生成正式版，可以放到任何网页空间
 ```
 

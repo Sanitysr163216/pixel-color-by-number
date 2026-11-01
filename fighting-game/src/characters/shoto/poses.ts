@@ -194,6 +194,69 @@ const RP_SPLIT: Pose = { ...RP_FORWARD, fk: [8, 84], ff: [16, 98], bk: [-6, 84],
 const RP_FALL: Pose = { ...JUMP_DOWN, fe: [8, 64], fh: [12, 61], be: [-2, 64], bh: [-6, 61], staff: [[-12, 58], [18, 62]] };
 const RP_LAND: Pose = { ...CROUCH, fe: [10, 40], fh: [14, 34], be: [-2, 40], bh: [-8, 32], staff: [[-14, 30], [18, 36]] };
 
+// Crouching normals.
+const JAB1: Pose = { ...CROUCH, fe: [20, 42], fh: [32, 42], bigHand: true };
+const JAB2: Pose = { ...CROUCH, fe: [12, 40], fh: [18, 46], be: [20, 40], bh: [32, 40] };
+const CHOP0: Pose = { ...CROUCH, fe: [0, 44], fh: [-8, 40] };
+const CHOP1: Pose = { ...CROUCH, head: [10, 55], neck: [6, 47], fe: [26, 42], fh: [50, 40], bigHand: true };
+const CHOP2: Pose = { ...CHOP1, fe: [22, 42], fh: [42, 41] };
+const SPIN0: Pose = {
+  head: [-4, 58], neck: [-3, 50], hip: [0, 28],
+  fe: [-10, 44], fh: [-18, 46], be: [4, 42], bh: [-4, 38],
+  fk: [12, 18], ff: [12, 0], bk: [-10, 12], bf: [-16, 0],
+};
+const SPIN1: Pose = { ...SPIN0, head: [-6, 60], neck: [-4, 52], hip: [0, 30], fe: [-16, 50], fh: [-26, 52], be: [-2, 46], bh: [-10, 44] };
+const BACKHAND: Pose = {
+  head: [6, 66], neck: [4, 58], hip: [-2, 32],
+  fe: [22, 56], fh: [38, 54], be: [-10, 50], bh: [-18, 44],
+  fk: [14, 20], ff: [14, 0], bk: [-10, 14], bf: [-16, 0], bigHand: true,
+};
+const STOMP0: Pose = {
+  head: [0, 70], neck: [0, 62], hip: [0, 38],
+  fe: [10, 54], fh: [16, 48], be: [-8, 56], bh: [-16, 52],
+  fk: [12, 34], ff: [16, 18], bk: [-8, 20], bf: [-14, 0],
+};
+const STOMP1: Pose = {
+  head: [-4, 72], neck: [-2, 64], hip: [0, 40],
+  fe: [8, 56], fh: [14, 50], be: [-12, 58], bh: [-20, 54],
+  fk: [14, 22], ff: [18, 0], bk: [-8, 20], bf: [-14, 0],
+};
+const LOW_DK0: Pose = {
+  head: [-8, 50], neck: [-6, 44], hip: [0, 28],
+  fe: [-10, 30], fh: [-14, 18], be: [-6, 30], bh: [-10, 16],
+  fk: [10, 26], ff: [6, 14], bk: [-2, 12], bf: [-6, 0],
+};
+const LOW_DK1: Pose = {
+  head: [-14, 42], neck: [-10, 40], hip: [0, 30],
+  fe: [-14, 24], fh: [-18, 10], be: [-10, 22], bh: [-14, 8],
+  fk: [20, 22], ff: [42, 16], bk: [-2, 12], bf: [-6, 0],
+};
+
+// Jumping MK: a side kick like Ryu's in SF2.
+const JMK0: Pose = { ...JUMP_UP, fk: [14, 40], ff: [10, 30] };
+const JMK1: Pose = {
+  head: [-4, 83], neck: [-2, 74], hip: [0, 46],
+  fe: [6, 62], fh: [12, 68], be: [-6, 60], bh: [-12, 66],
+  fk: [16, 36], ff: [30, 26], bk: [2, 34], bf: [-8, 30],
+};
+
+// Soul Flake: thrown with a black rod.
+const FLAKE0: Pose = { ...STANCE, fe: [10, 60], fh: [12, 56], be: [6, 60], bh: [8, 56], rod: [[-2, 50], [22, 62]] };
+const FLAKE1: Pose = {
+  ...STANCE, head: [6, 87], neck: [4, 78],
+  fe: [18, 62], fh: [26, 58], be: [12, 60], bh: [20, 58],
+  fk: [12, 24], ff: [16, 0], rod: [[12, 58], [42, 58]],
+};
+const FLAKE_CE: Pose = { ...STANCE, fe: [8, 80], fh: [10, 92], be: [4, 80], bh: [6, 92], rod: [[-8, 100], [24, 86]] };
+
+// Spiritual Tunneling: dash with the fist cocked, then a punch at head level.
+const TUNNEL0: Pose = { ...DASH[0], fe: [4, 64], fh: [-4, 70], bigHand: true };
+const TUNNEL1: Pose = {
+  head: [10, 86], neck: [7, 77], hip: [2, 48],
+  fe: [22, 80], fh: [38, 84], be: [-2, 64], bh: [-8, 60],
+  fk: [14, 24], ff: [22, 0], bk: [-12, 22], bf: [-24, 0], bigHand: true,
+};
+
 interface MoveAnim {
   startup: Pose[];
   active: Pose[];
@@ -212,6 +275,15 @@ const MOVES: Record<string, MoveAnim> = {
   leopard: { startup: [LE0], active: [LE1], recovery: [LE1, LE2, STANCE] },
   'rising.L': { startup: [RP0], active: [RP_FORWARD], recovery: [RP_FALL], fall: RP_FALL },
   'rising.M': { startup: [RP0], active: [RP_UP], recovery: [RP_FALL], fall: RP_FALL },
+  '2LP': { startup: [CROUCH], active: [JAB1, JAB1, CROUCH, CROUCH, CROUCH, JAB2, JAB2], recovery: [JAB2, CROUCH] },
+  '2MP': { startup: [CROUCH, CHOP0], active: [CHOP1], recovery: [CHOP2, CHOP0, CROUCH] },
+  '2HP': { startup: [SPIN0, SPIN1], active: [BACKHAND], recovery: [BACKHAND, SPIN0, CROUCH] },
+  '2LK': { startup: [STOMP0], active: [STOMP1], recovery: [STOMP1, CROUCH] },
+  '2MK': { startup: [LOW_DK0], active: [LOW_DK1], recovery: [LOW_DK1, LOW_DK0, CROUCH] },
+  'j.MK': { startup: [JMK0], active: [JMK1], recovery: [JUMP_DOWN], fall: JUMP_DOWN },
+  flake: { startup: [FLAKE0], active: [FLAKE1], recovery: [FLAKE1, FLAKE1, FLAKE0, STANCE] },
+  'flake.CE': { startup: [FLAKE0, FLAKE_CE, FLAKE_CE], active: [FLAKE1], recovery: [FLAKE1, FLAKE1, FLAKE0, STANCE] },
+  tunneling: { startup: [TUNNEL0], active: [TUNNEL1], recovery: [TUNNEL1, LE2, STANCE] },
   'rising.H': {
     startup: [RP0],
     // 14 frames hitting above, then 6 frames reaching behind (matches the hitbox phases).

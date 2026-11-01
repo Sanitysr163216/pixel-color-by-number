@@ -35,7 +35,7 @@ export interface Slide {
   speed: number;
   dir: number;
   /** The attacker, who slides back instead if this fighter is stuck in a corner. */
-  from: 0 | 1;
+  from: 0 | 1 | null;
 }
 
 export interface Fighter {
@@ -84,6 +84,11 @@ export interface Fighter {
   /** Frames left in hitstun, blockstun, landing recovery or on the ground after a knockdown. */
   stun: number;
   airBlock: boolean;
+  /** The side the fighter is blocking against (-1 left, 1 right) and the frame of their last block. */
+  blockSide: number;
+  blockFrame: number;
+  /** Blocking a projectile that locks the stance: standing/crouching can't change until blockstun ends. */
+  guardLock: boolean;
   /** airReset: touched the ground; the fighter is back on the next frame. */
   landed: boolean;
   /** knockdown: lying on the ground. */
@@ -132,6 +137,9 @@ export function createFighter(index: 0 | 1, char: CompiledCharacter): Fighter {
     chainsUsed: [],
     stun: 0,
     airBlock: false,
+    blockSide: 0,
+    blockFrame: -1,
+    guardLock: false,
     landed: false,
     down: false,
     wakeupMultiplier: 1,
