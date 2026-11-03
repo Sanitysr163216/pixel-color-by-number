@@ -78,6 +78,8 @@ function stateTag(game: Game, f: Fighter): string {
       return 'PRE-JUMP';
     case 'dash':
       return 'DASH';
+    case 'thrown':
+      return 'THROWN';
     case 'jump':
       return f.hop ? 'BACK HOP' : '';
     case 'ground':

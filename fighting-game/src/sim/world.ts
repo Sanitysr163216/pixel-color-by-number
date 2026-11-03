@@ -91,6 +91,8 @@ export class World {
   /** What happened during the last step (for sparks and sounds). */
   readonly events: WorldEvent[] = [];
   projectiles: Projectile[] = [];
+  /** Throws that reach their slam on this frame. */
+  private readonly slams: Fighter[] = [];
   advantage: Advantage | null = null;
   /** false in training: health stops at 1. */
   koEnabled = true;
@@ -139,6 +141,8 @@ export class World {
       if (frozen[f.index]) f.hitstop--;
       else this.advance(f);
     }
+    // After both fighters have moved, so the slam frame counts as the first wakeup frame whoever threw.
+    for (const f of this.slams.splice(0)) this.slam(f, f.move!);
     for (const f of fs) if (!frozen[f.index]) this.slide(f);
     this.separate();
     for (const f of fs) this.face(f);
@@ -226,6 +230,12 @@ export class World {
         // Wakeup: the hurtbox comes back on the same frame the buttons start working again.
         if (f.down && f.stun <= 0) this.toGround(f);
         return;
+      case 'thrown': {
+        // Only if the throw stopped before the slam, which an invincible throw shouldn't allow.
+        const t = this.other(f);
+        if (t.state !== 'move' || !t.move?.throw) this.toGround(f);
+        return;
+      }
     }
   }
 
@@ -413,6 +423,12 @@ export class World {
     this.use(f, age, fresh);
     if (!air) {
       const dir = numpad(frame.x, frame.y, f.facing);
+      // The throw: close to an opponent who can be thrown. Otherwise the same input does its normal.
+      const t = c.throw;
+      if (t && !allow.chainFrom && dir === t.direction && BTN[button] & t.buttons && this.throwable(f)) {
+        this.startThrow(f);
+        return true;
+      }
       const cn = c.commandNormals.find((n) => n.direction === dir && n.button === button);
       if (cn) return this.startNormal(f, cn.move, false, allow.chainFrom);
     }
@@ -593,6 +609,7 @@ export class World {
     const m = f.move!;
     f.moveFrame++;
     if (m.projectile && f.moveFrame === m.startup + 1) this.spawnProjectile(f, m);
+    if (m.throw && f.moveFrame === m.throw.slamFrame) this.slams.push(f);
     for (const s of m.motion) {
       if (s.frame !== f.moveFrame) continue;
       if (s.forward !== undefined) f.vx = f.facing * s.forward;
@@ -708,6 +725,58 @@ export class World {
     f.airBlock = false;
     f.guardLock = false;
     f.airActionUsed = airActionUsed;
+  }
+
+  // ---------------------------------------------------------------- throws
+
+  /** A grounded opponent in front, within range, who isn't in hit stun, blockstun or invulnerable. */
+  private throwable(f: Fighter): boolean {
+    const o = this.other(f);
+    if (this.isAirborne(o) || this.isInvulnerable(o)) return false;
+    if (o.state !== 'ground' && o.state !== 'dash' && o.state !== 'jumpSquat' && o.state !== 'move' && o.state !== 'landing') {
+      return false;
+    }
+    const ahead = (o.x - f.x) * f.facing;
+    return ahead >= 0 && ahead <= f.char.throw!.range;
+  }
+
+  private startThrow(f: Fighter): void {
+    const o = this.other(f);
+    this.startMove(f, f.char.throw!.move, null);
+    o.state = 'thrown';
+    o.frame = 0;
+    o.move = null;
+    o.special = null;
+    o.vx = 0;
+    o.vy = 0;
+    o.slide = null;
+    o.walk = 0;
+    o.guarding = false;
+    o.guardLock = false;
+    o.crouching = false;
+    o.hitstop = 0;
+  }
+
+  /** The throw's slam: straight into the ground (never airborne), knocked down, wakeup counted from now. */
+  private slam(f: Fighter, m: CompiledMove): void {
+    const o = this.other(f);
+    if (o.state !== 'thrown') return;
+    o.health = Math.max(this.koEnabled ? 0 : 1, o.health - m.damage);
+    f.meter = Math.min(METER_MAX, f.meter + m.meterOnHit);
+    o.combo = { hits: 1, damage: m.damage };
+    o.x = Math.min(WALL_RIGHT, Math.max(WALL_LEFT, f.x + f.facing * m.throw!.landAt));
+    o.y = 0;
+    o.vx = 0;
+    o.vy = 0;
+    o.state = o.health <= 0 ? 'ko' : 'knockdown';
+    o.frame = 0;
+    o.down = true;
+    o.landed = false;
+    o.wakeupMultiplier = m.knockdown?.wakeupMultiplier ?? 1;
+    o.stun = Math.round(RULES.knockdown.wakeup * o.wakeupMultiplier) - 1;
+    this.events.push({ type: 'hit', x: o.x, y: px(10), fighter: f.index, strength: m.strength, moveId: m.id });
+    this.events.push({ type: 'land', x: o.x, y: 0, fighter: o.index, strength: 'M', moveId: '' });
+    this.measuring = { attacker: f.index, blocked: false, free: [null, null] };
   }
 
   // ---------------------------------------------------------------- projectiles
@@ -982,7 +1051,7 @@ export class World {
   }
 
   isInvulnerable(f: Fighter): boolean {
-    if (f.state === 'airReset' || f.state === 'knockdown' || f.state === 'ko') return true;
+    if (f.state === 'airReset' || f.state === 'knockdown' || f.state === 'thrown' || f.state === 'ko') return true;
     return f.state === 'move' && f.move!.invincible.some(([a, b]) => f.moveFrame >= a && f.moveFrame <= b);
   }
 
@@ -1012,7 +1081,7 @@ export class World {
 
   pushbox(f: Fighter): Rect | null {
     const p = f.char.push;
-    if (f.state === 'airReset') return null;
+    if (f.state === 'airReset' || f.state === 'thrown') return null;
     if (f.state === 'knockdown' || f.state === 'ko') return f.down ? place(f.x, f.y, f.facing, p.down) : null;
     const box = this.isAirborne(f) ? p.air : f.crouching ? p.crouch : p.stand;
     return place(f.x, f.y, f.facing, box);

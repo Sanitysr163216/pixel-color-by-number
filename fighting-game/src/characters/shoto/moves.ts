@@ -188,6 +188,82 @@ export const crouchHK: MoveData = {
 };
 
 // ---------------------------------------------------------------- jumping normals
+// Every jumping attack has to be blocked standing.
+
+/** Small range punch. */
+export const jumpLP: MoveData = {
+  name: 'Jumping Jab',
+  kind: 'normal',
+  strength: 'L',
+  startup: 3,
+  active: 5,
+  recovery: 5,
+  damage: 30,
+  hitstun: 12,
+  blockstun: 8,
+  knockback: { distance: 14, speed: 3.5 },
+  hitboxes: [{ boxes: [{ x: 12, y: 50, w: 20, h: 12 }] }],
+};
+
+/** A slightly longer range punch aimed downwards. */
+export const jumpMP: MoveData = {
+  name: 'Jumping Down Punch',
+  kind: 'normal',
+  strength: 'M',
+  startup: 5,
+  active: 5,
+  recovery: 6,
+  damage: 55,
+  hitstun: 16,
+  blockstun: 12,
+  knockback: { distance: 22, speed: 4.5 },
+  hitboxes: [{ boxes: [{ x: 12, y: 30, w: 28, h: 16 }] }],
+};
+
+/** An okay range hand chop, parallel to the ground. */
+export const jumpHP: MoveData = {
+  name: 'Jumping Chop',
+  kind: 'normal',
+  strength: 'H',
+  startup: 7,
+  active: 4,
+  recovery: 8,
+  damage: 85,
+  hitstun: 19,
+  blockstun: 14,
+  knockback: { distance: 32, speed: 5.5 },
+  hitboxes: [{ boxes: [{ x: 16, y: 50, w: 32, h: 12 }] }],
+};
+
+/** Fast knee: a small hitbox under the character, at the knees. */
+export const jumpLK: MoveData = {
+  name: 'Jumping Knee',
+  kind: 'normal',
+  strength: 'L',
+  startup: 3,
+  active: 6,
+  recovery: 4,
+  damage: 30,
+  hitstun: 12,
+  blockstun: 8,
+  knockback: { distance: 14, speed: 3.5 },
+  hitboxes: [{ boxes: [{ x: -6, y: 10, w: 26, h: 16 }] }],
+};
+
+/** A heel kick that hits high, above the jumping character's body. */
+export const jumpHK: MoveData = {
+  name: 'Jumping Heel Kick',
+  kind: 'normal',
+  strength: 'H',
+  startup: 7,
+  active: 5,
+  recovery: 8,
+  damage: 90,
+  hitstun: 20,
+  blockstun: 15,
+  knockback: { distance: 32, speed: 5.5 },
+  hitboxes: [{ boxes: [{ x: 10, y: 66, w: 28, h: 24 }] }],
+};
 
 /**
  * A side kick like Ryu's jumping MK in SF2: forward and down. The second box, around the hip, reaches a little
@@ -259,6 +335,29 @@ export const forwardMK: MoveData = {
     { frames: [2, 3], boxes: [{ x: 16, y: 24, w: 26, h: 40 }] },
   ],
   hurtboxes: [{ frames: [10, 24], boxes: [{ x: 6, y: 40, w: 22, h: 52 }] }], // the raised leg
+};
+
+// ---------------------------------------------------------------- throw
+
+/**
+ * Close forward + MP or HP: a throw like a judo shoulder throw. Grabs on the first frame, turns, and slams the
+ * opponent into the ground behind him (the sides switch). The opponent is never airborne and is knocked down.
+ * Both fighters are invulnerable during the throw.
+ */
+export const shoulderThrow: MoveData = {
+  name: 'Shoulder Throw',
+  kind: 'throw',
+  strength: 'H',
+  startup: 0, // grabs on the frame the button is pressed
+  active: 1,
+  recovery: 27,
+  damage: 120,
+  hitstun: 0,
+  blockstun: 0,
+  knockdown: true,
+  invincible: [[1, 28]],
+  hitboxes: [],
+  throw: { slamFrame: 20, landAt: -40 },
 };
 
 // ---------------------------------------------------------------- Leopard Hand Strike (4, 2, 1, 6 + P)

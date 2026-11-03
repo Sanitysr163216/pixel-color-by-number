@@ -6,7 +6,12 @@ import {
   crouchLP,
   crouchMK,
   crouchMP,
+  jumpHK,
+  jumpHP,
+  jumpLK,
+  jumpLP,
   jumpMK,
+  jumpMP,
   soulFlakeCE,
   soulFlakeH,
   soulFlakeL,
@@ -20,6 +25,7 @@ import {
   risingPushH,
   risingPushL,
   risingPushM,
+  shoulderThrow,
   standHK,
   standLP,
   standMP,
@@ -72,18 +78,20 @@ export const shoto: CharacterData = {
     '2LK': crouchLK,
     '2MK': crouchMK,
     '2HK': crouchHK,
-    'j.LP': null,
-    'j.MP': null,
-    'j.HP': null,
-    'j.LK': null,
+    'j.LP': jumpLP,
+    'j.MP': jumpMP,
+    'j.HP': jumpHP,
+    'j.LK': jumpLK,
     'j.MK': jumpMK,
-    'j.HK': null,
+    'j.HK': jumpHK,
   },
 
   commandNormals: [
     { direction: 6, button: 'MP', move: forwardMP },
     { direction: 6, button: 'MK', move: forwardMK },
   ],
+
+  throw: { range: 52, direction: 6, buttons: ['MP', 'HP'], move: shoulderThrow },
 
   specials: [
     {

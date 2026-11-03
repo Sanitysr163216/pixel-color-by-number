@@ -15,8 +15,17 @@ export interface Box {
  * normal: a button on its own (standing, crouching or jumping).
  * command: a button plus a direction (e.g. forward + MK).
  * special: a motion plus a button. ce: Chakra Enhance version of a special. chakra: Chakra special.
+ * throw: grabs a nearby opponent; can't be blocked.
  */
-export type MoveKind = 'normal' | 'command' | 'special' | 'ce' | 'chakra';
+export type MoveKind = 'normal' | 'command' | 'special' | 'ce' | 'chakra' | 'throw';
+
+/** A throw grabs on its first active frame and slams the opponent into the ground on `slamFrame`. */
+export interface ThrowData {
+  /** Frame of the move on which the opponent hits the ground: damage, knockdown, wakeup count starts. */
+  slamFrame: number;
+  /** Where the opponent lands, px from the thrower, forward (negative = behind: the sides switch). */
+  landAt: number;
+}
 
 /** How the move has to be blocked. mid: standing or crouching. low: crouching. overhead: standing. */
 export type Guard = 'mid' | 'low' | 'overhead';
@@ -112,6 +121,7 @@ export interface MoveData {
   hitboxes: HitboxPhase[];
   hurtboxes?: HurtboxPhase[];
   projectile?: ProjectileData;
+  throw?: ThrowData;
   /** Movement during the move. */
   motion?: MotionStep[];
   /**

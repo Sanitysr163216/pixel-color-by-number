@@ -1,6 +1,6 @@
 import { DEFAULT_HITSTOP, type HitstopTable } from '../config';
 import { px } from '../core/units';
-import type { ButtonName } from '../input/buttons';
+import { BTN, type ButtonName } from '../input/buttons';
 import { compileMove, ubox, type CompiledMove, type UBox } from '../moves/compile';
 import { NORMAL_SLOTS, type CharacterData, type NormalSlot } from './types';
 
@@ -39,6 +39,8 @@ export interface CompiledCharacter {
   push: { stand: UBox; crouch: UBox; air: UBox; down: UBox };
   normals: Record<NormalSlot, CompiledMove | null>;
   commandNormals: { direction: number; button: ButtonName; move: CompiledMove }[];
+  /** range in simulation units; buttons as a bit mask. */
+  throw: { range: number; direction: number; buttons: number; move: CompiledMove } | null;
   specials: CompiledSpecial[];
   chakraSpecials: CompiledChakraSpecial[];
   data: CharacterData;
@@ -73,6 +75,14 @@ export function compileCharacter(c: CharacterData): CompiledCharacter {
       button: cn.button,
       move: compileMove(`${cn.direction}${cn.button}`, cn.move),
     })),
+    throw: c.throw
+      ? {
+          range: px(c.throw.range),
+          direction: c.throw.direction,
+          buttons: c.throw.buttons.reduce((mask, b) => mask | BTN[b], 0),
+          move: compileMove('throw', c.throw.move),
+        }
+      : null,
     specials: c.specials.map((s) => ({
       id: s.id,
       name: s.name,

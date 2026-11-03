@@ -16,7 +16,7 @@ Needs [Node.js](https://nodejs.org) 20 or newer.
 cd fighting-game
 npm install
 npm run dev        # opens a local address to play at, reloads when files change
-npm test           # 131 frame-exact tests of the rules
+npm test           # 144 frame-exact tests of the rules
 npm run build      # a finished copy in dist/, for any web host
 ```
 
@@ -29,7 +29,7 @@ npm run build      # a finished copy in dist/, for any web host
 | LK MK HK | J K L | Numpad 1 2 3 |
 | Gamepad | first pad: X Y RB = punches, A B RT = kicks | second pad |
 
-Hold back to block, down-back to block lows. Tap forward twice to dash (hold forward to keep running),
+Hold back to block, down-back to block lows. Forward + MP or HP close to the opponent throws. Tap forward twice to dash (hold forward to keep running),
 tap back twice to hop backwards. Press a different normal during hitstop to chain; normals cancel into specials
 until their active frames end.
 

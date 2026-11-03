@@ -154,13 +154,14 @@ describe('acting in the air', () => {
     expect(p1.health).toBe(1000);
   });
 
-  it('the real Shoto has no jumping attacks yet: the buttons do nothing in the air', () => {
-    const w = newWorld(250, [shoto, shoto]);
-    const p1 = w.fighters[0];
-    play(w, [inp(8)]);
-    hold(w, 8);
-    play(w, [inp(5, ['HK'])]);
-    expect(p1.state).toBe('jump');
-    expect(p1.lastCommand).toBe('j.HK: EMPTY SLOT');
+  it('the Shoto has an attack on every button in the air', () => {
+    for (const button of ['LP', 'MP', 'HP', 'LK', 'MK', 'HK'] as const) {
+      const w = newWorld(250, [shoto, shoto]);
+      const p1 = w.fighters[0];
+      play(w, [inp(8)]);
+      hold(w, 8);
+      play(w, [inp(5, [button])]);
+      expect(p1.move?.id, button).toBe(`j.${button}`);
+    }
   });
 });

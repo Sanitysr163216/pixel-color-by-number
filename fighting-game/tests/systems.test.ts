@@ -370,8 +370,9 @@ describe('special cancels', () => {
   });
 
   it('not from a command normal', () => {
-    const w = newWorld(40);
+    const w = newWorld(70); // out of throw range, so forward + MP is the Lunging Palm
     play(w, [inp(6, ['MP'])]);
+    expect(w.fighters[0].move?.id).toBe('6MP');
     until(w, () => w.fighters[1].combo.hits === 1);
     leopard(w, NEUTRAL);
     noSpecial(w);

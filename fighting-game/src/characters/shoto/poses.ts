@@ -240,6 +240,14 @@ const JMK1: Pose = {
   fk: [16, 36], ff: [30, 26], bk: [2, 34], bf: [-8, 30],
 };
 
+// Other jumping attacks.
+const JLP: Pose = { ...JUMP_UP, fe: [14, 62], fh: [26, 58], bigHand: true };
+const JMP: Pose = { ...JUMP_UP, fe: [14, 54], fh: [26, 40], bigHand: true };
+const JHP: Pose = { ...JUMP_UP, fe: [18, 58], fh: [38, 56], bigHand: true };
+const JLK: Pose = { ...JUMP_UP, fk: [12, 22], ff: [4, 10] };
+const JHK0: Pose = { ...JUMP_UP, fk: [12, 52], ff: [4, 60] };
+const JHK1: Pose = { ...JUMP_UP, head: [-2, 80], neck: [-1, 71], fk: [16, 62], ff: [26, 80] };
+
 // Soul Flake: thrown with a black rod.
 const FLAKE0: Pose = { ...STANCE, fe: [10, 60], fh: [12, 56], be: [6, 60], bh: [8, 56], rod: [[-2, 50], [22, 62]] };
 const FLAKE1: Pose = {
@@ -248,6 +256,19 @@ const FLAKE1: Pose = {
   fk: [12, 24], ff: [16, 0], rod: [[12, 58], [42, 58]],
 };
 const FLAKE_CE: Pose = { ...STANCE, fe: [8, 80], fh: [10, 92], be: [4, 80], bh: [6, 92], rod: [[-8, 100], [24, 86]] };
+
+// Shoulder throw: grab, turn the back to the opponent with them on the shoulder, slam them down behind.
+const THROW_GRAB: Pose = { ...STANCE, fe: [16, 66], fh: [28, 70], be: [14, 62], bh: [26, 64], bigHand: true };
+const THROW_TURN: Pose = {
+  head: [-6, 74], neck: [-4, 66], hip: [0, 40],
+  fe: [4, 76], fh: [10, 86], be: [0, 74], bh: [6, 84],
+  fk: [-10, 22], ff: [-14, 0], bk: [8, 22], bf: [12, 0],
+};
+const THROW_SLAM: Pose = {
+  head: [-18, 52], neck: [-12, 54], hip: [0, 44],
+  fe: [-22, 40], fh: [-34, 26], be: [-18, 38], bh: [-30, 24],
+  fk: [-10, 22], ff: [-14, 0], bk: [10, 20], bf: [16, 0],
+};
 
 // Spiritual Tunneling: dash with the fist cocked, then a punch at head level.
 const TUNNEL0: Pose = { ...DASH[0], fe: [4, 64], fh: [-4, 70], bigHand: true };
@@ -281,9 +302,15 @@ const MOVES: Record<string, MoveAnim> = {
   '2LK': { startup: [STOMP0], active: [STOMP1], recovery: [STOMP1, CROUCH] },
   '2MK': { startup: [LOW_DK0], active: [LOW_DK1], recovery: [LOW_DK1, LOW_DK0, CROUCH] },
   'j.MK': { startup: [JMK0], active: [JMK1], recovery: [JUMP_DOWN], fall: JUMP_DOWN },
+  'j.LP': { startup: [JUMP_UP], active: [JLP], recovery: [JUMP_DOWN], fall: JUMP_DOWN },
+  'j.MP': { startup: [JUMP_UP], active: [JMP], recovery: [JUMP_DOWN], fall: JUMP_DOWN },
+  'j.HP': { startup: [JUMP_UP], active: [JHP], recovery: [JHP, JUMP_DOWN], fall: JUMP_DOWN },
+  'j.LK': { startup: [JUMP_UP], active: [JLK], recovery: [JUMP_DOWN], fall: JUMP_DOWN },
+  'j.HK': { startup: [JHK0], active: [JHK1], recovery: [JHK1, JUMP_DOWN], fall: JUMP_DOWN },
   flake: { startup: [FLAKE0], active: [FLAKE1], recovery: [FLAKE1, FLAKE1, FLAKE0, STANCE] },
   'flake.CE': { startup: [FLAKE0, FLAKE_CE, FLAKE_CE], active: [FLAKE1], recovery: [FLAKE1, FLAKE1, FLAKE0, STANCE] },
   tunneling: { startup: [TUNNEL0], active: [TUNNEL1], recovery: [TUNNEL1, LE2, STANCE] },
+  throw: { startup: [], active: [THROW_GRAB], recovery: [THROW_GRAB, THROW_TURN, THROW_TURN, THROW_SLAM, THROW_SLAM, STANCE] },
   'rising.H': {
     startup: [RP0],
     // 14 frames hitting above, then 6 frames reaching behind (matches the hitbox phases).
@@ -304,6 +331,17 @@ function spread(poses: Pose[], frame: number, length: number): Pose {
 
 function moveAnim(id: string): MoveAnim {
   return MOVES[id] ?? MOVES[id.split('.')[0]] ?? FALLBACK;
+}
+
+/**
+ * The opponent of a shoulder throw, `t` from 0 (grabbed) to 1 (slammed): held in front, then swung up and
+ * over the thrower's shoulder to land behind him. dx, dy: where to draw them, px from the thrower
+ * (dx forward for the thrower, dy up).
+ */
+export function thrownPose(t: number): PoseResult & { dx: number; dy: number } {
+  if (t <= 0.25) return { pose: HIT1, dx: 26, dy: 0 };
+  const a = (Math.PI * (t - 0.25)) / 0.75;
+  return { pose: HIT2, rotate: a, pivot: [0, 50], dx: 30 * Math.cos(a), dy: 56 * Math.sin(a) };
 }
 
 export function shotoPose(f: Fighter, clock: number): PoseResult {
@@ -334,6 +372,8 @@ export function shotoPose(f: Fighter, clock: number): PoseResult {
       if (f.landed) return { pose: JUMP_DOWN };
       // One backward somersault, then upright until landing.
       return { pose: HIT2, rotate: Math.min(1, f.frame / 26) * Math.PI * 2, pivot: [0, 50] };
+    case 'thrown':
+      return { pose: HIT1 }; // drawn along the thrower's swing by the renderer (thrownPose)
     case 'knockdown':
     case 'ko':
       if (!f.down) return { pose: HIT2, rotate: Math.min(1, f.frame / 12) * 1.3, pivot: [0, 30] };

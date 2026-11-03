@@ -73,6 +73,11 @@ function notes(m: CompiledMove): string {
   if (m.invincible.length) out.push(`Invincible frames ${m.invincible.map(([a, b]) => `${a}–${b}`).join(', ')}`);
   if (m.airborne.length) out.push(`Airborne frames ${m.airborne.map(([a, b]) => `${a}–${b}`).join(', ')}`);
   if (m.barCost) out.push(`${m.barCost} bar${m.barCost > 1 ? 's' : ''}`);
+  if (m.throw) {
+    out.push('Unblockable. Out of range, the normal comes out instead');
+    out.push(m.throw.landAt < 0 ? 'Lands the opponent behind (sides switch)' : 'Lands the opponent in front');
+    out.push(`Slam on frame ${m.throw.slamFrame}`);
+  }
   if (m.chip) out.push(`Chip ${m.chip}${m.airBlockChip > 1 ? ` (×${m.airBlockChip} in the air)` : ''}`);
   out.push(`Knockback ${m.knockback.distance / SUB} px`);
   return out.join('. ');
@@ -97,6 +102,11 @@ export function renderMoveList(c: CompiledCharacter): void {
   }
   group('Command normals');
   for (const cn of c.commandNormals) row(`${cn.direction} + ${cn.button}`, cn.move);
+  if (c.throw) {
+    group('Throw');
+    const buttons = c.data.throw!.buttons.join(' / ');
+    row(`${c.throw.direction} + ${buttons} (close)`, c.throw.move);
+  }
   group('Special moves');
   for (const sp of c.specials) {
     for (const v of ['L', 'M', 'H'] as const) {

@@ -1,6 +1,6 @@
 import { FLOOR_Y, SCREEN_H, SCREEN_W, STAGE_W } from '../config';
 import { SUB } from '../core/units';
-import { shotoPose } from '../characters/shoto/poses';
+import { shotoPose, thrownPose } from '../characters/shoto/poses';
 import type { Game } from '../game/game';
 import { movePhase, type Fighter } from '../sim/fighter';
 import { place } from '../sim/boxes';
@@ -48,8 +48,9 @@ export class Renderer {
       const size = Math.max(8, 18 - lift / 8);
       fb.ellipse(Math.round(x), ground + 1, size, 3, SHADOW);
     }
-    // The fighter who is attacking is drawn in front.
-    const order = b.state === 'move' && a.state !== 'move' ? [a, b] : [b, a];
+    // The fighter who is attacking is drawn in front; a thrown fighter is drawn over the thrower.
+    const front = (f: Fighter) => f.state === 'thrown' || (f.state === 'move' && w.other(f).state !== 'thrown');
+    const order = front(b) && !front(a) ? [a, b] : [b, a];
     for (const f of order) {
       this.clones(fb, game, f, cameraX, ground);
       this.fighter(fb, game, f, cameraX, ground);
@@ -65,6 +66,15 @@ export class Renderer {
 
   private fighter(fb: Framebuffer, game: Game, f: Fighter, cameraX: number, ground: number): void {
     const w = game.world;
+    const thrower = w.other(f);
+    if (f.state === 'thrown' && thrower.move?.throw) {
+      // Carried along the thrower's swing, over the shoulder.
+      const t = Math.min(1, thrower.moveFrame / thrower.move.throw.slamFrame);
+      const { pose, rotate, pivot, dx, dy } = thrownPose(t);
+      const x = thrower.x / SUB - cameraX + thrower.facing * dx;
+      drawFigure(fb, pose, { x, y: ground - dy, facing: f.facing, palette: FIGHTER_PALETTES[f.index], rotate, pivot });
+      return;
+    }
     const { pose, rotate, pivot } = shotoPose(f, w.frame);
     const shaking = f.hitstop > 0 && f.state !== 'move' && f.state !== 'ground';
     const x = f.x / SUB - cameraX + (shaking ? (w.frame % 2 ? 1 : -1) : 0);

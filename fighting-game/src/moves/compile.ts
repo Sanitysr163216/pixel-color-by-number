@@ -46,6 +46,7 @@ export interface CompiledMove {
   /** Move frames (1 = first startup frame) where each hitbox phase exists. */
   hitPhases: { from: number; to: number; boxes: UBox[]; hit: number }[];
   projectile: CompiledProjectile | null;
+  throw: { slamFrame: number; landAt: number } | null;
   chip: number;
   airBlockChip: number;
   hurtPhases: { from: number; to: number; boxes: UBox[]; replace: boolean }[];
@@ -91,7 +92,11 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
   if (m.landingRecovery !== undefined) whole(m.landingRecovery, 'landingRecovery');
   if (m.knockback && !(m.knockback.distance >= 0 && m.knockback.speed > 0))
     fail('knockback needs a distance of 0 or more and a speed above 0');
-  if (!m.hitboxes.length && !m.projectile) fail('needs at least one hitbox phase or a projectile');
+  if (!m.hitboxes.length && !m.projectile && !m.throw) fail('needs at least one hitbox phase, a projectile or a throw');
+  if (m.throw) {
+    whole(m.throw.slamFrame, 'throw.slamFrame', 1);
+    if (m.throw.slamFrame > m.startup + m.active + m.recovery) fail('throw.slamFrame is after the end of the move');
+  }
   const pr = m.projectile;
   if (pr) {
     whole(pr.hits, 'projectile.hits', 1);
@@ -158,7 +163,8 @@ export function compileMove(id: string, m: MoveData): CompiledMove {
           lockGuard: pr.lockGuard ?? false,
         }
       : null,
-    chip: m.chip ?? (m.kind === 'normal' || m.kind === 'command' ? 0 : RULES.specialChip),
+    throw: m.throw ? { slamFrame: m.throw.slamFrame, landAt: px(m.throw.landAt) } : null,
+    chip: m.chip ?? (m.kind === 'special' || m.kind === 'ce' || m.kind === 'chakra' ? RULES.specialChip : 0),
     airBlockChip: m.airBlockChip ?? 1,
     hurtPhases,
     motion: (m.motion ?? []).map((s) => ({

@@ -61,6 +61,7 @@ Every number here lives in code and can be changed there (see "Where to change t
 | Blockstrings | Once a fighter blocks, every hit from the same side that arrives while they are still in blockstun is blocked too, even if they let go of back, highs and lows alike. |
 | One side at a time | Blocking covers the side the attack comes from. If hits come from both sides on the same frame (a projectile from behind and a punch from the front), only one can be blocked. A hit from the other side during blockstun is not blocked automatically. |
 | Chip damage | Specials, CE and Chakra specials do 10 damage per hit even when blocked. Normals do none. |
+| Throws | Forward + MP or HP close to the opponent. Can't be blocked. Only grounded opponents who aren't in hit stun, blockstun or invulnerable can be thrown; otherwise (or out of range) the same input does its normal. Both fighters are invulnerable during the throw. The thrown opponent is never airborne: slammed into the ground and knocked down, wakeup counted from the slam. |
 | Projectiles | Fly at their own speed and disappear off the screen. Two players' projectiles that meet take one hit off each other (most have one hit, so both vanish). A projectile's hit freezes the opponent and the projectile, not the thrower, and its knockback is never pushed back onto the thrower. |
 | Air blocking | Normals done from the ground: light and medium can be blocked in the air, heavies can't. Specials done from the ground can't be blocked in the air, including ones that leave the ground themselves (Rising Push). Anything done after jumping (normals or specials) can be blocked by an airborne opponent. |
 | Hit in the air by a normal | A light or medium normal done from the ground, or any normal done in the air: the opponent flips backwards, invulnerable until landing, and can't act until landing. |
@@ -95,6 +96,12 @@ pressed together, the punch comes out. Landing during an air attack: 2 frames be
 6. **Input overlap**: a rolled 4-2-1-6 passes through a half circle forward, so Leopard Strike's motion with two
    punches and a bar comes out as Spiritual Tunneling. Once Leopard Strike has a CE, which should win?
 7. **Chip can KO** in versus.
+8. **Throw**: range 52 px between the fighters' centres, 120 damage, slam on frame 20, 28 frames in all. Like a
+   judo shoulder throw, the opponent lands behind the thrower, so the sides switch. Should they land in front
+   instead?
+9. **Throws can't be escaped** (no throw tech) and there's no throw protection after hit stun or blockstun ends.
+   If both players throw on the same frame, player 1 wins.
+10. **Air normals' numbers** (jumping LP, MP, HP, LK, HK) are first guesses.
 
 ## Character 1: Shoto / "zoner"
 
@@ -119,7 +126,13 @@ Current numbers (all first guesses, to tune by playing). S / A / R = startup / a
 | 2HP | Spinning Backhand | 9 | 4 | 18 | 85 | 20 | 15 | 32 px at 5.5 | Spins on his heel |
 | 2LK | Stomp | 5 | 2 | 9 | 25 | 11 | 8 | 10 px at 3 | Low. Reaches 30 px. Half stands up (hurtbox 74 px tall) |
 | 2MK | Low Donkey Kick | 7 | 3 | 15 | 50 | 15 | 11 | 22 px at 4.5 | Low, knee level. Moves 1.2 px per frame forward during recovery |
-| j.MK | Jumping Side Kick | 5 | 10 | 4 | 60 | 16 | 12 | 22 px at 4.5 | Like Ryu's in SF2: forward and down, with a box at the hip that crosses up. Overhead |
+| j.LP | Jumping Jab | 3 | 5 | 5 | 30 | 12 | 8 | 14 px at 3.5 | Small range. Overhead (every jumping attack) |
+| j.MP | Jumping Down Punch | 5 | 5 | 6 | 55 | 16 | 12 | 22 px at 4.5 | A bit longer, aimed downwards |
+| j.HP | Jumping Chop | 7 | 4 | 8 | 85 | 19 | 14 | 32 px at 5.5 | Hand chop parallel to the ground, okay range |
+| j.LK | Jumping Knee | 3 | 6 | 4 | 30 | 12 | 8 | 14 px at 3.5 | Fast; small hitbox under the character, at the knees |
+| j.MK | Jumping Side Kick | 5 | 10 | 4 | 60 | 16 | 12 | 22 px at 4.5 | Like Ryu's in SF2: forward and down, with a box at the hip that crosses up |
+| j.HK | Jumping Heel Kick | 7 | 5 | 8 | 90 | 20 | 15 | 32 px at 5.5 | Hits high, above the jumping character |
+| 6 + MP / HP (close) | Shoulder Throw | 0 | 1 | 27 | 120 | knockdown | – | – | Grabs on the frame it's pressed, slams on frame 20, opponent lands 40 px behind (sides switch). Unblockable |
 | 2 3 6 + LP | Soul Flake L | 12 | 1 | 43 | 70 | 20 | 16 | 16 px at 4 | Projectile, 3 px per frame. Black rod. Chip 10, ×2 in the air |
 | 2 3 6 + MP | Soul Flake M | 12 | 1 | 44 | 70 | 20 | 16 | 16 px at 4 | 25% faster (3.75 px per frame) |
 | 2 3 6 + HP | Soul Flake H | 12 | 1 | 45 | 70 | 20 | 16 | 16 px at 4 | 75% faster (5.25 px per frame) |
@@ -129,8 +142,7 @@ Current numbers (all first guesses, to tune by playing). S / A / R = startup / a
 Rising Push leaves the ground after its startup; its feet (the hitbox) have no hurtbox. The move ends when the
 fighter lands, then the landing recovery applies.
 
-Not made yet (the input is read, nothing happens): standing HP, LK, MK; jumping LP, MP, HP, LK, HK; Leopard Strike CE
-and Rising Push CE.
+Not made yet (the input is read, nothing happens): standing HP, LK, MK; Leopard Strike CE and Rising Push CE.
 
 Other numbers: 1000 health; walk 2.5 px per frame forward, 2 back; jumps have 4 frames on the ground first, last
 about 41 frames and go about 105 px high; wakeup 40 frames (80 after heavy Leopard Strike). Dash and back hop are

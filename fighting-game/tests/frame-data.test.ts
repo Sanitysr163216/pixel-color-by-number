@@ -40,14 +40,14 @@ describe('startup / active / recovery', () => {
     }
   });
 
-  it('jumping MK: hitbox only on its active frames', () => {
+  it.each(['LP', 'MP', 'HP', 'LK', 'MK', 'HK'] as const)('j.%s: hitbox only on its active frames', (button) => {
     const w = newWorld(250);
     const p1 = w.fighters[0];
-    const m = shoto.normals['j.MK']!;
+    const m = shoto.normals[`j.${button}`]!;
     play(w, [inp(8)]);
     hold(w, 6);
-    play(w, [inp(5, ['MK'])]);
-    expect(p1.move?.id).toBe('j.MK');
+    play(w, [inp(5, [button])]);
+    expect(p1.move?.id).toBe(`j.${button}`);
     for (let frame = 1; frame <= m.startup + m.active + 2 && p1.state === 'move'; frame++) {
       expect(p1.moveFrame).toBe(frame);
       expect(w.hitboxes(p1).length > 0, `frame ${frame}`).toBe(frame > m.startup && frame <= m.startup + m.active);

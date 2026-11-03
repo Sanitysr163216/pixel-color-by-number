@@ -77,6 +77,18 @@ export interface CharacterData {
   pushboxes: { stand: Box; crouch: Box; air: Box; down: Box };
   normals: Record<NormalSlot, MoveData | null>;
   commandNormals: CommandNormal[];
+  /**
+   * Direction + one of the buttons, close to a grounded opponent: the throw. Out of range, or against an
+   * opponent who can't be thrown, the same input does its normal move instead.
+   */
+  throw?: {
+    /** Greatest distance between the two fighters' centres, px. */
+    range: number;
+    /** Numpad direction relative to the fighter (6 = forward). */
+    direction: number;
+    buttons: ButtonName[];
+    move: MoveData;
+  };
   specials: SpecialMove[];
   chakraSpecials: ChakraSpecial[];
 }

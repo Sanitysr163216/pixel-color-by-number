@@ -14,6 +14,7 @@ import type { CompiledMove } from '../moves/compile';
  * blockstun  blocking (on the ground or in the air)
  * airReset   hit in the air by a light/medium normal: flipping back, invulnerable until landing
  * knockdown  knocked down: falling, then on the ground until wakeup; invulnerable throughout
+ * thrown     held by the opponent's throw until it slams them down; invulnerable
  * ko         knocked out
  */
 export type StateName =
@@ -27,6 +28,7 @@ export type StateName =
   | 'blockstun'
   | 'airReset'
   | 'knockdown'
+  | 'thrown'
   | 'ko';
 
 /** Knockback still to apply: `left` units at `speed` units per frame in screen direction `dir`. */
@@ -156,7 +158,7 @@ export function createFighter(index: 0 | 1, char: CompiledCharacter): Fighter {
 
 /** Hit states: the fighter is part of a combo until they leave these. */
 export function isStunned(f: Fighter): boolean {
-  return f.state === 'hitstun' || f.state === 'airReset' || f.state === 'knockdown' || f.state === 'ko';
+  return f.state === 'hitstun' || f.state === 'airReset' || f.state === 'knockdown' || f.state === 'thrown' || f.state === 'ko';
 }
 
 /** Which part of its move a fighter is in. */
